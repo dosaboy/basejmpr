@@ -25,6 +25,10 @@ import re
 import hashlib
 import shutil
 import subprocess
+import uuid
+import sys
+
+from jinja2 import Environment, PackageLoader
 
 
 def get_consumers_by_version(consumers):
@@ -52,7 +56,7 @@ def get_consumers(root_dir, base_revs):
                     img = os.path.join(newpath, e)
                     info = subprocess.check_output(['qemu-img', 'info', img])
                     for l in info.split('\n'):
-                        regex = r'^backing file: .+\(actual path: (.+)\)'
+                        regex = r'^backing file: ([^\s]+)'
                         res = re.search(regex, l)
                         if res:
                             for b in base_revs:
@@ -139,14 +143,36 @@ def get_link(basedir, v, f):
     return os.path.realpath(os.path.join(basedir, v, f))
 
 
+def create_tools(ctxt, path):
+    env = Environment()
+    env.loader = PackageLoader('basejmpr', 'templates')
+    dom = os.path.join(path, ctxt['name'])
+    if not os.path.isdir(dom):
+        os.makedirs(dom)
+
+    path = os.path.join(path, ctxt['name'])
+    for t in ['user-data', 'meta-data', 'create-new.sh', 'domain.xml']:
+        rt = env.get_template(t).render(**ctxt)
+        with open(os.path.join(path, t), 'w') as fd:
+            fd.write(rt)
+
+    os.chmod(os.path.join(path, 'create-new.sh'), 0o0755)
+    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str, default=None,
                         required=True)
     parser.add_argument('--series', '-s', type=str, default='xenial',
                         required=False)
-    parser.add_argument('--create-new', '-n', action='store_true',
+    parser.add_argument('--create-new-revision', action='store_true',
                         default=False)
+    parser.add_argument('--create-new-domain', action='store_true',
+                        default=False)
+    parser.add_argument('--num-domains', type=int, default=None,
+                        required=False)
+    parser.add_argument('--domain-name-prefix', type=str, default=None,
+                        required=False)
     parser.add_argument('--revision', '-r', type=str, default=None,
                         required=False)
     args = parser.parse_args()
@@ -162,10 +188,10 @@ if __name__ == "__main__":
     BASE_REVISIONS = get_revisions(BACKERS_BASEDIR)
 
     rev = args.revision
-    if rev and not BASE_REVISIONS.get(rev) and not args.create_new:
+    if rev and not BASE_REVISIONS.get(rev) and not args.create_new_revision:
         raise Exception("Revision '{}' does not exist".format(rev))
     elif (not BASE_REVISIONS or (rev and not BASE_REVISIONS.get(rev)) or
-            (args.create_new)):
+            (args.create_new_revision)):
         if not BASE_REVISIONS:
             rev = 1
         elif not rev:
@@ -211,3 +237,33 @@ if __name__ == "__main__":
 
     if empty:
         print "-"
+
+    if args.revision:
+        rev = args.revision
+    else:
+        rev = str(max([int(k) for k in BASE_REVISIONS.keys()]))
+
+    backingfile = os.path.join(BACKERS_BASEDIR, rev,
+                               BASE_REVISIONS[rev]['files'][0])
+
+    num_domains = args.num_domains
+    if num_domains or args.create_new_domain:
+        if not num_domains:
+            num_domains = 1
+
+        name = args.domain_name_prefix or uuid.uuid4()
+        for n in xrange(num_domains):
+            _name = '{}{}'.format(name, n)
+
+            dompath = os.path.join(args.path, _name)
+            imgpath = os.path.join(dompath, '{}.img'.format(_name))
+            seedpath = os.path.join(dompath, '{}-seed.img'.format(_name))
+            create_tools({'name': _name,
+                          'ssh_user': 'hopem',
+                          'uuid': uuid.uuid4(),
+                          'backingfile': backingfile,
+                          'img_path': imgpath,
+                          'seed_path': seedpath}, args.path)
+            os.chdir(dompath)
+            subprocess.check_output(['./create-new.sh'])
+            subprocess.check_output(['virsh', 'define', 'domain.xml'])

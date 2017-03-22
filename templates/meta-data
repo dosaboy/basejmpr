@@ -1,0 +1,4 @@
+instance-id: {{uuid}}
+network-interfaces: |
+  auto ens3
+  iface ens3 inet dhcp
