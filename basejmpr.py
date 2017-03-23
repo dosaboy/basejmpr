@@ -26,6 +26,7 @@ import hashlib
 import shutil
 import subprocess
 import uuid
+import random
 import sys
 
 from jinja2 import Environment, PackageLoader
@@ -80,7 +81,7 @@ def get_consumers(root_dir, base_revs):
     return consumers
 
 
-def create_new_revision(basedir, series_list, rev):
+def create_revision(basedir, series_list, rev):
     newpath = os.path.join(basedir, rev)
     if os.path.isdir(newpath):
         raise Exception("Base revision '{}' already exists".format(rev))
@@ -143,21 +144,112 @@ def get_link(basedir, v, f):
     return os.path.realpath(os.path.join(basedir, v, f))
 
 
-def create_tools(ctxt, path):
+def create_tools(ctxt, dom_path):
     env = Environment()
     env.loader = PackageLoader('basejmpr', 'templates')
-    dom = os.path.join(path, ctxt['name'])
-    if not os.path.isdir(dom):
-        os.makedirs(dom)
-
-    path = os.path.join(path, ctxt['name'])
+    # Expect to fail if exists
+    os.makedirs(dom_path)
     for t in ['user-data', 'meta-data', 'create-new.sh', 'domain.xml']:
         rt = env.get_template(t).render(**ctxt)
-        with open(os.path.join(path, t), 'w') as fd:
+        with open(os.path.join(dom_path, t), 'w') as fd:
             fd.write(rt)
 
-    os.chmod(os.path.join(path, 'create-new.sh'), 0o0755)
-    
+    os.chmod(os.path.join(dom_path, 'create-new.sh'), 0o0755)
+
+
+def generate_unicast_mac():
+    first = random.randint(0, 255) & 0xFE
+    return "%02x:%02x:%02x:%02x:%02x:%02x" % (first,
+                                              random.randint(0, 255),
+                                              random.randint(0, 255),
+                                              random.randint(0, 255),
+                                              random.randint(0, 255),
+                                              random.randint(0, 255))
+
+
+def domain_exists(name):
+    out = subprocess.check_output(['virsh', 'list', '--all'])
+    key = re.compile(r' %s ' % name)
+    result = re.search(key, out)
+    return result is not None and result.group(0).strip() == name
+
+
+def create_domains(root, base_root, revision, num_domains, base_revisions,
+                   domain_name_prefix, force=False):
+    if revision:
+        rev = revision
+    else:
+        rev = str(max([int(k) for k in base_revisions.keys()]))
+
+    backingfile = os.path.join(base_root, rev,
+                               base_revisions[rev]['files'][0])
+
+    if not num_domains:
+        num_domains = 1
+
+    name = domain_name_prefix or str(uuid.uuid4())
+    for n in xrange(num_domains):
+        if num_domains > 1:
+            dom_name = '{}{}'.format(name, n)
+        else:
+            dom_name = name
+
+        dom_path = os.path.join(root, dom_name)
+        imgpath = os.path.join(dom_path, '{}.img'.format(dom_name))
+        seedpath = os.path.join(dom_path, '{}-seed.img'.format(dom_name))
+        dom_uuid = uuid.uuid4()
+        print "Creating domain '{}' with uuid '{}'".format(dom_name,
+                                                           dom_uuid)
+        if os.path.isdir(dom_path):
+            if not force:
+                print("Domain path '{}' already exists - skipping "
+                      "create".format(dom_path))
+                continue
+            else:
+                print("Domain path '{}' already exists - "
+                      "overwriting".format(dom_path))
+                shutil.rmtree(dom_path)
+        elif domain_exists(dom_name) and not force:
+            print("Domain '{}' already exists - skipping "
+                  "create".format(dom_name))
+            continue
+
+        create_tools({'name': dom_name,
+                      'ssh_user': 'hopem',
+                      'uuid': dom_uuid,
+                      'backingfile': backingfile,
+                      'img_path': imgpath,
+                      'seed_path': seedpath,
+                      'mac_addr1': generate_unicast_mac(),
+                      'mac_addr2': generate_unicast_mac()}, dom_path)
+
+        try:
+            os.chdir(dom_path)
+            with open('/dev/null') as fd:
+                subprocess.check_call(['./create-new.sh'], stdout=fd,
+                                      stderr=fd)
+
+            try:
+                subprocess.check_output(['virsh', 'define', 'domain.xml'],
+                                        stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as exc:
+                msg = ("error: operation failed: domain '{}' already "
+                       "exists with uuid ".format(dom_name))
+                if msg in exc.output and force:
+                    with open('/dev/null') as fd:
+                        subprocess.check_call(['virsh', 'undefine', dom_name],
+                                              stdout=fd, stderr=fd)
+                        subprocess.check_call(['virsh', 'define',
+                                               'domain.xml'],
+                                              stdout=fd, stderr=fd)
+                else:
+                    raise
+        except:
+            print "\nError creating domain '{}': deleting {}".format(dom_name,
+                                                                     dom_path)
+            shutil.rmtree(dom_path)
+            raise
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -165,15 +257,17 @@ if __name__ == "__main__":
                         required=True)
     parser.add_argument('--series', '-s', type=str, default='xenial',
                         required=False)
-    parser.add_argument('--create-new-revision', action='store_true',
+    parser.add_argument('--create-revision', action='store_true',
                         default=False)
-    parser.add_argument('--create-new-domain', action='store_true',
+    parser.add_argument('--create-domain', action='store_true',
                         default=False)
     parser.add_argument('--num-domains', type=int, default=None,
                         required=False)
     parser.add_argument('--domain-name-prefix', type=str, default=None,
                         required=False)
     parser.add_argument('--revision', '-r', type=str, default=None,
+                        required=False)
+    parser.add_argument('--force', action='store_true', default=False,
                         required=False)
     args = parser.parse_args()
 
@@ -188,16 +282,16 @@ if __name__ == "__main__":
     BASE_REVISIONS = get_revisions(BACKERS_BASEDIR)
 
     rev = args.revision
-    if rev and not BASE_REVISIONS.get(rev) and not args.create_new_revision:
+    if rev and not BASE_REVISIONS.get(rev) and not args.create_revision:
         raise Exception("Revision '{}' does not exist".format(rev))
     elif (not BASE_REVISIONS or (rev and not BASE_REVISIONS.get(rev)) or
-            (args.create_new_revision)):
+            (args.create_revision)):
         if not BASE_REVISIONS:
             rev = 1
         elif not rev:
             rev = max([int(k) for k in BASE_REVISIONS.keys()]) + 1
 
-        create_new_revision(BACKERS_BASEDIR, SERIES, rev)
+        create_revision(BACKERS_BASEDIR, SERIES, rev)
 
     # refresh
     BASE_REVISIONS = get_revisions(BACKERS_BASEDIR)
@@ -238,32 +332,9 @@ if __name__ == "__main__":
     if empty:
         print "-"
 
-    if args.revision:
-        rev = args.revision
-    else:
-        rev = str(max([int(k) for k in BASE_REVISIONS.keys()]))
-
-    backingfile = os.path.join(BACKERS_BASEDIR, rev,
-                               BASE_REVISIONS[rev]['files'][0])
+    print ""
 
     num_domains = args.num_domains
-    if num_domains or args.create_new_domain:
-        if not num_domains:
-            num_domains = 1
-
-        name = args.domain_name_prefix or uuid.uuid4()
-        for n in xrange(num_domains):
-            _name = '{}{}'.format(name, n)
-
-            dompath = os.path.join(args.path, _name)
-            imgpath = os.path.join(dompath, '{}.img'.format(_name))
-            seedpath = os.path.join(dompath, '{}-seed.img'.format(_name))
-            create_tools({'name': _name,
-                          'ssh_user': 'hopem',
-                          'uuid': uuid.uuid4(),
-                          'backingfile': backingfile,
-                          'img_path': imgpath,
-                          'seed_path': seedpath}, args.path)
-            os.chdir(dompath)
-            subprocess.check_output(['./create-new.sh'])
-            subprocess.check_output(['virsh', 'define', 'domain.xml'])
+    if num_domains or args.create_domain:
+        create_domains(args.path, BACKERS_BASEDIR, args.revision, num_domains,
+                       BASE_REVISIONS, args.domain_name_prefix, args.force)
