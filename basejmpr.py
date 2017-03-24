@@ -144,17 +144,15 @@ def get_link(basedir, v, f):
     return os.path.realpath(os.path.join(basedir, v, f))
 
 
-def create_tools(ctxt, dom_path):
+def render_templates(ctxt, dom_path, templates):
     env = Environment()
     env.loader = PackageLoader('basejmpr', 'templates')
     # Expect to fail if exists
     os.makedirs(dom_path)
-    for t in ['user-data', 'meta-data', 'create-new.sh', 'domain.xml']:
+    for t in templates:
         rt = env.get_template(t).render(**ctxt)
         with open(os.path.join(dom_path, t), 'w') as fd:
             fd.write(rt)
-
-    os.chmod(os.path.join(dom_path, 'create-new.sh'), 0o0755)
 
 
 def generate_unicast_mac():
@@ -175,7 +173,7 @@ def domain_exists(name):
 
 
 def create_domains(root, base_root, revision, num_domains, base_revisions,
-                   domain_name_prefix, force=False):
+                   domain_name_prefix, force=False, skip_seed=False):
     if revision:
         rev = revision
     else:
@@ -198,31 +196,40 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
         imgpath = os.path.join(dom_path, '{}.img'.format(dom_name))
         seedpath = os.path.join(dom_path, '{}-seed.img'.format(dom_name))
         dom_uuid = uuid.uuid4()
-        print "Creating domain '{}' with uuid '{}'".format(dom_name,
-                                                           dom_uuid)
+        print "INFO: creating domain '{}' with uuid '{}'".format(dom_name,
+                                                                 dom_uuid)
         if os.path.isdir(dom_path):
             if not force:
-                print("Domain path '{}' already exists - skipping "
+                print("WARNING: domain path '{}' already exists - skipping "
                       "create".format(dom_path))
                 continue
             else:
-                print("Domain path '{}' already exists - "
+                print("INFO: domain path '{}' already exists - "
                       "overwriting".format(dom_path))
                 shutil.rmtree(dom_path)
         elif domain_exists(dom_name) and not force:
-            print("Domain '{}' already exists - skipping "
+            print("WARNING: domain '{}' already exists - skipping "
                   "create".format(dom_name))
             continue
 
-        create_tools({'name': dom_name,
-                      'ssh_user': 'hopem',
-                      'uuid': dom_uuid,
-                      'backingfile': backingfile,
-                      'img_path': imgpath,
-                      'seed_path': seedpath,
-                      'mac_addr1': generate_unicast_mac(),
-                      'mac_addr2': generate_unicast_mac()}, dom_path)
+        ctxt = {'name': dom_name,
+                'ssh_user': 'hopem',
+                'uuid': dom_uuid,
+                'backingfile': backingfile,
+                'img_path': imgpath,
+                'seed_path': seedpath,
+                'mac_addr1': generate_unicast_mac(),
+                'mac_addr2': generate_unicast_mac()}
 
+        if skip_seed:
+            del ctxt['seed_path']
+
+        templates = ['create-new.sh', 'domain.xml']
+        if not skip_seed:
+            templates += ['user-data', 'meta-data']
+
+        render_templates(ctxt, dom_path, templates)
+        os.chmod(os.path.join(dom_path, 'create-new.sh'), 0o0755)
         try:
             os.chdir(dom_path)
             with open('/dev/null') as fd:
@@ -245,8 +252,8 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
                 else:
                     raise
         except:
-            print "\nError creating domain '{}': deleting {}".format(dom_name,
-                                                                     dom_path)
+            print("\nERROR: domain '{}' create unsuccessful: deleting "
+                  "{}".format(dom_name, dom_path))
             shutil.rmtree(dom_path)
             raise
 
@@ -254,21 +261,33 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str, default=None,
-                        required=True)
+                        required=True, help="Path to kvm images")
     parser.add_argument('--series', '-s', type=str, default='xenial',
-                        required=False)
+                        required=False, help="Ubuntu series you want "
+                        "to use")
     parser.add_argument('--create-revision', action='store_true',
-                        default=False)
+                        default=False, help="Whether to create a new "
+                        "revision if one does not already exist. If "
+                        "--revision is provided will attempt to create that "
+                        "revision otherwise highest rev + 1")
     parser.add_argument('--create-domain', action='store_true',
-                        default=False)
+                        default=False, help="Create a new domain.")
     parser.add_argument('--num-domains', type=int, default=None,
-                        required=False)
+                        required=False, help="Number of domains to "
+                        "create. (requires --create-new-domains)")
     parser.add_argument('--domain-name-prefix', type=str, default=None,
-                        required=False)
+                        required=False, help="Name to be used for new "
+                        "domains created. If multiple domains are created "
+                        "they will be suffixed with an integer counter.")
     parser.add_argument('--revision', '-r', type=str, default=None,
-                        required=False)
+                        required=False, help="Backing file revision to "
+                        "use.")
     parser.add_argument('--force', action='store_true', default=False,
-                        required=False)
+                        required=False, help="Force actions such as "
+                        "creating domains that already exist.")
+    parser.add_argument('--no-domain-seed', action='store_true', default=False,
+                        required=False, help="Do not seed new domains "
+                        "with a cloud-init config-drive.")
     args = parser.parse_args()
 
     SERIES = [args.series] or ['trusty', 'xenial']
@@ -334,7 +353,8 @@ if __name__ == "__main__":
 
     print ""
 
-    num_domains = args.num_domains
-    if num_domains or args.create_domain:
-        create_domains(args.path, BACKERS_BASEDIR, args.revision, num_domains,
-                       BASE_REVISIONS, args.domain_name_prefix, args.force)
+    if args.create_domain:
+        create_domains(args.path, BACKERS_BASEDIR, args.revision,
+                       args.num_domains, BASE_REVISIONS,
+                       args.domain_name_prefix, args.force,
+                       args.no_domain_seed)
