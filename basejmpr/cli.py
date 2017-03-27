@@ -22,14 +22,10 @@
 import argparse
 import os
 import re
-import hashlib
 import shutil
 import subprocess
-import uuid
-import random
-import sys
 
-from jinja2 import Environment, PackageLoader
+from domain.utils import create_domains
 
 
 def get_consumers_by_version(consumers):
@@ -144,120 +140,6 @@ def get_link(basedir, v, f):
     return os.path.realpath(os.path.join(basedir, v, f))
 
 
-def render_templates(ctxt, dom_path, templates):
-    env = Environment()
-    env.loader = PackageLoader('basejmpr', 'templates')
-    # Expect to fail if exists
-    os.makedirs(dom_path)
-    for t in templates:
-        rt = env.get_template(t).render(**ctxt)
-        with open(os.path.join(dom_path, t), 'w') as fd:
-            fd.write(rt)
-
-
-def generate_unicast_mac():
-    first = random.randint(0, 255) & 0xFE
-    return "%02x:%02x:%02x:%02x:%02x:%02x" % (first,
-                                              random.randint(0, 255),
-                                              random.randint(0, 255),
-                                              random.randint(0, 255),
-                                              random.randint(0, 255),
-                                              random.randint(0, 255))
-
-
-def domain_exists(name):
-    out = subprocess.check_output(['virsh', 'list', '--all'])
-    key = re.compile(r' %s ' % name)
-    result = re.search(key, out)
-    return result is not None and result.group(0).strip() == name
-
-
-def create_domains(root, base_root, revision, num_domains, base_revisions,
-                   domain_name_prefix, force=False, skip_seed=False):
-    if revision:
-        rev = revision
-    else:
-        rev = str(max([int(k) for k in base_revisions.keys()]))
-
-    backingfile = os.path.join(base_root, rev,
-                               base_revisions[rev]['files'][0])
-
-    if not num_domains:
-        num_domains = 1
-
-    name = domain_name_prefix or str(uuid.uuid4())
-    for n in xrange(num_domains):
-        if num_domains > 1:
-            dom_name = '{}{}'.format(name, n)
-        else:
-            dom_name = name
-
-        dom_path = os.path.join(root, dom_name)
-        imgpath = os.path.join(dom_path, '{}.img'.format(dom_name))
-        seedpath = os.path.join(dom_path, '{}-seed.img'.format(dom_name))
-        dom_uuid = uuid.uuid4()
-        print "INFO: creating domain '{}' with uuid '{}'".format(dom_name,
-                                                                 dom_uuid)
-        if os.path.isdir(dom_path):
-            if not force:
-                print("WARNING: domain path '{}' already exists - skipping "
-                      "create".format(dom_path))
-                continue
-            else:
-                print("INFO: domain path '{}' already exists - "
-                      "overwriting".format(dom_path))
-                shutil.rmtree(dom_path)
-        elif domain_exists(dom_name) and not force:
-            print("WARNING: domain '{}' already exists - skipping "
-                  "create".format(dom_name))
-            continue
-
-        ctxt = {'name': dom_name,
-                'ssh_user': 'hopem',
-                'uuid': dom_uuid,
-                'backingfile': backingfile,
-                'img_path': imgpath,
-                'seed_path': seedpath,
-                'mac_addr1': generate_unicast_mac(),
-                'mac_addr2': generate_unicast_mac()}
-
-        if skip_seed:
-            del ctxt['seed_path']
-
-        templates = ['create-new.sh', 'domain.xml']
-        if not skip_seed:
-            templates += ['user-data', 'meta-data']
-
-        render_templates(ctxt, dom_path, templates)
-        os.chmod(os.path.join(dom_path, 'create-new.sh'), 0o0755)
-        try:
-            os.chdir(dom_path)
-            with open('/dev/null') as fd:
-                subprocess.check_call(['./create-new.sh'], stdout=fd,
-                                      stderr=fd)
-
-            try:
-                subprocess.check_output(['virsh', 'define', 'domain.xml'],
-                                        stderr=subprocess.STDOUT)
-            except subprocess.CalledProcessError as exc:
-                msg = ("error: operation failed: domain '{}' already "
-                       "exists with uuid ".format(dom_name))
-                if msg in exc.output and force:
-                    with open('/dev/null') as fd:
-                        subprocess.check_call(['virsh', 'undefine', dom_name],
-                                              stdout=fd, stderr=fd)
-                        subprocess.check_call(['virsh', 'define',
-                                               'domain.xml'],
-                                              stdout=fd, stderr=fd)
-                else:
-                    raise
-        except:
-            print("\nERROR: domain '{}' create unsuccessful: deleting "
-                  "{}".format(dom_name, dom_path))
-            shutil.rmtree(dom_path)
-            raise
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str, default=None,
@@ -288,6 +170,13 @@ if __name__ == "__main__":
     parser.add_argument('--no-domain-seed', action='store_true', default=False,
                         required=False, help="Do not seed new domains "
                         "with a cloud-init config-drive.")
+    parser.add_argument('--domain-snaps', type=str, default=None,
+                        required=False, help="Comma-delimited list of snaps "
+                        "to install in domain(s) if creating new ones")
+    parser.add_argument('--domain-snaps-classic', type=str, default=None,
+                        required=False, help="Comma-delimited list of snaps "
+                        "to install in domain(s) if creating new ones. These "
+                        "snaps will be install using --classic mode")
     args = parser.parse_args()
 
     SERIES = [args.series] or ['trusty', 'xenial']
@@ -306,7 +195,7 @@ if __name__ == "__main__":
     elif (not BASE_REVISIONS or (rev and not BASE_REVISIONS.get(rev)) or
             (args.create_revision)):
         if not BASE_REVISIONS:
-            rev = 1
+            rev = '1'
         elif not rev:
             rev = max([int(k) for k in BASE_REVISIONS.keys()]) + 1
 
@@ -354,7 +243,9 @@ if __name__ == "__main__":
     print ""
 
     if args.create_domain:
+        snaps = {'classic': args.domain_snaps_classic,
+                 'stable': args.domain_snaps}
         create_domains(args.path, BACKERS_BASEDIR, args.revision,
                        args.num_domains, BASE_REVISIONS,
                        args.domain_name_prefix, args.force,
-                       args.no_domain_seed)
+                       args.no_domain_seed, snap_dict=snaps)
