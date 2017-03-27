@@ -177,6 +177,9 @@ if __name__ == "__main__":
                         required=False, help="Comma-delimited list of snaps "
                         "to install in domain(s) if creating new ones. These "
                         "snaps will be install using --classic mode")
+    parser.add_argument('--domain-root-disk-size', type=str, default='40G',
+                        required=False, help="Size of root disk for new "
+                        "domains")
     args = parser.parse_args()
 
     SERIES = [args.series] or ['trusty', 'xenial']
@@ -247,5 +250,5 @@ if __name__ == "__main__":
                  'stable': args.domain_snaps}
         create_domains(args.path, BACKERS_BASEDIR, args.revision,
                        args.num_domains, BASE_REVISIONS,
-                       args.domain_name_prefix, args.force,
-                       args.no_domain_seed, snap_dict=snaps)
+                       args.domain_name_prefix, args.domain_root_disk_size,
+                       args.force, args.no_domain_seed, snap_dict=snaps)

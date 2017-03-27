@@ -65,8 +65,8 @@ def domain_exists(name):
 
 
 def create_domains(root, base_root, revision, num_domains, base_revisions,
-                   domain_name_prefix, force=False, skip_seed=False,
-                   snap_dict=None):
+                   domain_name_prefix, root_disk_size,
+                   force=False, skip_seed=False, snap_dict=None):
     if revision:
         rev = revision
     else:
@@ -113,7 +113,7 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
                 'seed_path': seedpath,
                 'mac_addr1': generate_unicast_mac(),
                 'mac_addr2': generate_unicast_mac(),
-                'size': '40G',
+                'size': root_disk_size,
                 'classic_snaps': snap_dict.get('classic'),
                 'stable_snaps': snap_dict.get('stable')}
 
