@@ -31,8 +31,9 @@ from domain.utils import create_domains
 def get_consumers_by_version(consumers):
     _c_by_v = {}
     for img_path in consumers:
-        for d in consumers[img_path]:
-            ver = d['version']
+        d = consumers[img_path]
+        ver = d.get('version')
+        if ver:
             entry = {'image': img_path,
                      'backing_file': d['backing_file']}
             if ver in _c_by_v:
@@ -48,31 +49,38 @@ def get_consumers(root_dir, base_revs):
     for path in os.listdir(root_dir):
         newpath = os.path.join(root_dir, path)
         if os.path.isdir(newpath):
-            for e in os.listdir(newpath):
-                if e.endswith('.img'):
-                    img = os.path.join(newpath, e)
-                    info = subprocess.check_output(['qemu-img', 'info', img])
-                    for l in info.split('\n'):
-                        regex = r'^backing file: ([^\s]+)'
-                        res = re.search(regex, l)
-                        if res:
-                            for b in base_revs:
-                                name = os.path.basename(res.group(1))
-                                version = os.path.dirname(res.group(1))
-                                version = os.path.basename(version)
-                                img_path = os.path.join(newpath, e)
-                                backing_file = os.path.join(version, name)
-                                for img in base_revs[b]['files']:
-                                    if backing_file == os.path.join(b, img):
-                                        entry = {'version': version,
-                                                 'backing_file': backing_file}
-                                        if img_path in consumers:
-                                            consumers[img_path].append(entry)
-                                        else:
-                                            consumers[img_path] = [entry]
+            for item in os.listdir(newpath):
+                img_path = os.path.join(newpath, item)
+                try:
+                    info = subprocess.check_output(['qemu-img', 'info',
+                                                    img_path],
+                                                   stderr=subprocess.STDOUT)
+                except subprocess.CalledProcessError:
+                    continue
 
-                                    elif img_path not in consumers:
-                                        consumers[img_path] = []
+                for line in info.split('\n'):
+                    regex = r'^backing file: ([^\s]+)'
+                    res = re.search(regex, line)
+                    if res:
+                        for rev in base_revs:
+                            name = os.path.basename(res.group(1))
+                            version = os.path.dirname(res.group(1))
+                            version = os.path.basename(version)
+                            backing_file = os.path.join(version, name)
+                            for img in base_revs[rev]['files']:
+                                if backing_file == os.path.join(rev, img):
+                                    entry = consumers.get(img_path, {})
+                                    if entry.get('version'):
+                                        msg = ("Duplicate consumer entry "
+                                               "detected - {}".format(
+                                                   img_path))
+                                        raise Exception(msg)
+
+                                    entry['version'] = version
+                                    entry['backing_file'] = backing_file
+                                    consumers[img_path] = entry
+                                elif img_path not in consumers:
+                                    consumers[img_path] = {}
 
     return consumers
 
@@ -152,6 +160,9 @@ if __name__ == "__main__":
                         "revision if one does not already exist. If "
                         "--revision is provided will attempt to create that "
                         "revision otherwise highest rev + 1")
+    parser.add_argument('--show-detached', action='store_true', default=False,
+                        help="Show qcow2 images that do not have a "
+                        "revisioned backing file")
     parser.add_argument('--create-domain', action='store_true',
                         default=False, help="Create a new domain.")
     parser.add_argument('--num-domains', type=int, default=None,
@@ -211,9 +222,9 @@ if __name__ == "__main__":
     print "Available base revisions:"
     if filtered_revisions:
         for v in sorted(filtered_revisions.keys(), key=lambda k: int(k)):
-            files = ['{} ({})'.format(f, get_link(BACKERS_BASEDIR, v, f))
+            files = ['{} <- {}'.format(f, get_link(BACKERS_BASEDIR, v, f))
                      for f in filtered_revisions[v]['files']]
-            print "{}: {}".format(v, ', '.join(files))
+            print "{}:{}".format(v, ', '.join(files))
     else:
         print "-"
 
@@ -227,21 +238,22 @@ if __name__ == "__main__":
                 if c_by_rev[rev]:
                     empty = False
                     for d in c_by_rev[rev]:
-                        print "%s: %s -b %s" % (rev, d['image'],
-                                                d['backing_file'])
+                        backfile = os.path.basename(d['backing_file'])
+                        print "{}:{} -> {}".format(rev, backfile, d['image'])
 
     if empty:
         print "-"
 
-    print "\nOrphans:"
-    empty = True
-    for img in consumers:
-        if not consumers[img]:
-            empty = False
-            print img
+    if args.show_detached:
+        print "\nDetached:"
+        empty = True
+        for img in consumers:
+            if not consumers[img].get('version'):
+                empty = False
+                print "{}".format(img)
 
-    if empty:
-        print "-"
+        if empty:
+            print "-"
 
     print ""
 
