@@ -193,13 +193,14 @@ if __name__ == "__main__":
                         "domains")
     args = parser.parse_args()
 
+    root_path = os.path.realpath(args.path)
     SERIES = [args.series] or ['trusty', 'xenial']
-    BACKERS_BASEDIR = os.path.join(args.path, 'backing_files')
+    BACKERS_BASEDIR = os.path.join(root_path, 'backing_files')
     BASE_REVISIONS = {}
     UNKNOWNS = {}
 
-    if not os.path.isdir(args.path):
-        raise Exception("Non-existent path '%s'" % (args.path))
+    if not os.path.isdir(root_path):
+        raise Exception("Non-existent path '%s'" % (root_path))
 
     BASE_REVISIONS = get_revisions(BACKERS_BASEDIR)
 
@@ -228,7 +229,7 @@ if __name__ == "__main__":
     else:
         print "-"
 
-    consumers = get_consumers(args.path, BASE_REVISIONS)
+    consumers = get_consumers(root_path, BASE_REVISIONS)
     print "\nConsumers:"
     c_by_rev = get_consumers_by_version(consumers)
     empty = True
@@ -260,7 +261,7 @@ if __name__ == "__main__":
     if args.create_domain:
         snaps = {'classic': args.domain_snaps_classic,
                  'stable': args.domain_snaps}
-        create_domains(args.path, BACKERS_BASEDIR, args.revision,
+        create_domains(root_path, BACKERS_BASEDIR, args.revision,
                        args.num_domains, BASE_REVISIONS,
                        args.domain_name_prefix, args.domain_root_disk_size,
                        args.force, args.no_domain_seed, snap_dict=snaps)

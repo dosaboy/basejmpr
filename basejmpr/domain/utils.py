@@ -48,7 +48,10 @@ def render_templates(ctxt, dom_path, dom_templates, local_path,
 
 
 def generate_unicast_mac():
-    first = random.randint(0, 255) & 0xFE
+    first = 0xFE
+    while first == 0xFE:
+        first = random.randint(0, 255) & 0xFE
+
     return "%02x:%02x:%02x:%02x:%02x:%02x" % (first,
                                               random.randint(0, 255),
                                               random.randint(0, 255),
