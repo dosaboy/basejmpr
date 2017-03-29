@@ -121,6 +121,9 @@ def create_revision(basedir, series_list, rev):
                             link = os.path.join(newpath,
                                                 line.partition(' ')[0])
                             target = os.path.join('targets', target)
+                            subprocess.check_output(['chattr', '-i',
+                                                     os.path.join(newpath,
+                                                                  target)])
                             subprocess.check_output(['ln', '-fs',
                                                      target, link])
     except:
@@ -212,7 +215,7 @@ if __name__ == "__main__":
         if not BASE_REVISIONS:
             rev = '1'
         elif not rev:
-            rev = max([int(k) for k in BASE_REVISIONS.keys()]) + 1
+            rev = str(max([int(k) for k in BASE_REVISIONS.keys()]) + 1)
 
         create_revision(BACKERS_BASEDIR, SERIES, rev)
 
