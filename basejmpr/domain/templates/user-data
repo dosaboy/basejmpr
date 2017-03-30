@@ -13,5 +13,7 @@ apt_get_upgrade_subcommand: "dist-upgrade"
 package_upgrade: True
 manage_etc_hosts: True
 apt_proxy: http://192.168.0.201:3142
-apt_sources:
-  - source: "ppa:juju/stable"
+#apt_sources:
+#  - source: "ppa:juju/stable"
+#packages:
+#   - juju
