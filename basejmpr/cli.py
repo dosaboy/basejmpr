@@ -151,6 +151,49 @@ def get_link(basedir, v, f):
     return os.path.realpath(os.path.join(basedir, v, f))
 
 
+def display_info(backers_path, revisions):
+    print "Available base revisions:"
+    if revisions:
+        for v in sorted(revisions.keys(), key=lambda k: int(k)):
+            files = ['{} <- {}'.format(f, get_link(backers_path, v, f))
+                     for f in revisions[v]['files']]
+            print "{}:{}".format(v, ', '.join(files))
+    else:
+        print "-"
+
+    consumers = get_consumers(root_path, revisions)
+    print "\nConsumers:"
+    c_by_rev = get_consumers_by_version(consumers)
+    empty = True
+    if c_by_rev:
+        for rev in c_by_rev:
+            if not args.revision or args.revision == rev:
+                if c_by_rev[rev]:
+                    for d in c_by_rev[rev]:
+                        if empty:
+                            backfile = os.path.basename(d['backing_file'])
+                            print "{}:{}".format(rev, backfile)
+
+                        empty = False
+                        print "  -> {}".format(d['image'])
+
+    if empty:
+        print "-"
+
+    if args.show_detached:
+        print "\nDetached:"
+        empty = True
+        for img in consumers:
+            if not consumers[img].get('version'):
+                empty = False
+                print "{}".format(img)
+
+        if empty:
+            print "-"
+
+    print ""
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str, default=None,
@@ -197,74 +240,35 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
-    SERIES = [args.series] or ['trusty', 'xenial']
-    BACKERS_BASEDIR = os.path.join(root_path, 'backing_files')
-    BASE_REVISIONS = {}
-    UNKNOWNS = {}
+    series = [args.series] or ['trusty', 'xenial']
+    backers_path = os.path.join(root_path, 'backing_files')
 
     if not os.path.isdir(root_path):
         raise Exception("Non-existent path '%s'" % (root_path))
 
-    BASE_REVISIONS = get_revisions(BACKERS_BASEDIR)
+    revisions = get_revisions(backers_path)
 
     rev = args.revision
-    if rev and not BASE_REVISIONS.get(rev) and not args.create_revision:
+    if rev and not revisions.get(rev) and not args.create_revision:
         raise Exception("Revision '{}' does not exist".format(rev))
-    elif (not BASE_REVISIONS or (rev and not BASE_REVISIONS.get(rev)) or
+    elif (not revisions or (rev and not revisions.get(rev)) or
             (args.create_revision)):
-        if not BASE_REVISIONS:
+        if not revisions:
             rev = '1'
         elif not rev:
-            rev = str(max([int(k) for k in BASE_REVISIONS.keys()]) + 1)
+            rev = str(max([int(k) for k in revisions.keys()]) + 1)
 
-        create_revision(BACKERS_BASEDIR, SERIES, rev)
+        create_revision(backers_path, series, rev)
 
     # refresh
-    BASE_REVISIONS = get_revisions(BACKERS_BASEDIR)
-    filtered_revisions = get_revisions(BACKERS_BASEDIR, args.revision)
-
-    print "Available base revisions:"
-    if filtered_revisions:
-        for v in sorted(filtered_revisions.keys(), key=lambda k: int(k)):
-            files = ['{} <- {}'.format(f, get_link(BACKERS_BASEDIR, v, f))
-                     for f in filtered_revisions[v]['files']]
-            print "{}:{}".format(v, ', '.join(files))
-    else:
-        print "-"
-
-    consumers = get_consumers(root_path, BASE_REVISIONS)
-    print "\nConsumers:"
-    c_by_rev = get_consumers_by_version(consumers)
-    empty = True
-    if c_by_rev:
-        for rev in c_by_rev:
-            if not args.revision or args.revision == rev:
-                if c_by_rev[rev]:
-                    empty = False
-                    for d in c_by_rev[rev]:
-                        backfile = os.path.basename(d['backing_file'])
-                        print "{}:{} -> {}".format(rev, backfile, d['image'])
-
-    if empty:
-        print "-"
-
-    if args.show_detached:
-        print "\nDetached:"
-        empty = True
-        for img in consumers:
-            if not consumers[img].get('version'):
-                empty = False
-                print "{}".format(img)
-
-        if empty:
-            print "-"
-
-    print ""
+    filtered_revisions = get_revisions(backers_path, args.revision)
+    display_info(backers_path, filtered_revisions)
 
     if args.create_domain:
         snaps = {'classic': args.domain_snaps_classic,
                  'stable': args.domain_snaps}
-        create_domains(root_path, BACKERS_BASEDIR, args.revision,
-                       args.num_domains, BASE_REVISIONS,
+        revisions = get_revisions(backers_path)
+        create_domains(root_path, backers_path, args.revision,
+                       args.num_domains, revisions,
                        args.domain_name_prefix, args.domain_root_disk_size,
                        args.force, args.no_domain_seed, snap_dict=snaps)
