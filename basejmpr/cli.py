@@ -224,7 +224,7 @@ if __name__ == "__main__":
     parser.add_argument('--force', action='store_true', default=False,
                         required=False, help="Force actions such as "
                         "creating domains that already exist.")
-    parser.add_argument('--no-domain-seed', action='store_true', default=False,
+    parser.add_argument('--domain-no-seed', action='store_true', default=False,
                         required=False, help="Do not seed new domains "
                         "with a cloud-init config-drive.")
     parser.add_argument('--domain-snaps', type=str, default=None,
@@ -271,4 +271,4 @@ if __name__ == "__main__":
         create_domains(root_path, backers_path, args.revision,
                        args.num_domains, revisions,
                        args.domain_name_prefix, args.domain_root_disk_size,
-                       args.force, args.no_domain_seed, snap_dict=snaps)
+                       args.force, args.domain_no_seed, snap_dict=snaps)
