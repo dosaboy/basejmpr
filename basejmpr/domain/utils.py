@@ -68,7 +68,7 @@ def domain_exists(name):
 
 
 def create_domains(root, base_root, revision, num_domains, base_revisions,
-                   domain_name_prefix, root_disk_size,
+                   domain_name_prefix, root_disk_size, ssh_lp_user,
                    force=False, skip_seed=False, snap_dict=None):
     if revision:
         rev = revision
@@ -109,7 +109,7 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
             continue
 
         ctxt = {'name': dom_name,
-                'ssh_user': 'hopem',
+                'ssh_user': ssh_lp_user,
                 'uuid': dom_uuid,
                 'backingfile': backingfile,
                 'img_path': imgpath,

@@ -237,6 +237,8 @@ if __name__ == "__main__":
     parser.add_argument('--domain-root-disk-size', type=str, default='40G',
                         required=False, help="Size of root disk for new "
                         "domains")
+    parser.add_argument('--domain-ssh-lp-id', type=str, default='hopem',
+                        required=False, help="LP user to import ssh key.")
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -271,4 +273,5 @@ if __name__ == "__main__":
         create_domains(root_path, backers_path, args.revision,
                        args.num_domains, revisions,
                        args.domain_name_prefix, args.domain_root_disk_size,
-                       args.force, args.domain_no_seed, snap_dict=snaps)
+                       args.domain_ssh_lp_id, args.force, args.domain_no_seed,
+                       snap_dict=snaps)
