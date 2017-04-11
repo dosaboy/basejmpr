@@ -47,19 +47,6 @@ def render_templates(ctxt, dom_path, dom_templates, local_path,
             fd.write(rt)
 
 
-def generate_unicast_mac():
-    first = 0xFE
-    while first == 0xFE:
-        first = random.randint(0, 255) & 0xFE
-
-    return "%02x:%02x:%02x:%02x:%02x:%02x" % (first,
-                                              random.randint(0, 255),
-                                              random.randint(0, 255),
-                                              random.randint(0, 255),
-                                              random.randint(0, 255),
-                                              random.randint(0, 255))
-
-
 def domain_exists(name):
     out = subprocess.check_output(['virsh', 'list', '--all'])
     key = re.compile(r' %s ' % name)
@@ -69,7 +56,8 @@ def domain_exists(name):
 
 def create_domains(root, base_root, revision, num_domains, base_revisions,
                    domain_name_prefix, root_disk_size, ssh_lp_user,
-                   force=False, skip_seed=False, snap_dict=None):
+                   domain_memory, force=False, skip_seed=False,
+                   snap_dict=None):
     if revision:
         rev = revision
     else:
@@ -91,9 +79,7 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
         dom_path = os.path.join(root, dom_name)
         imgpath = os.path.join(dom_path, '{}.img'.format(dom_name))
         seedpath = os.path.join(dom_path, '{}-seed.img'.format(dom_name))
-        dom_uuid = uuid.uuid4()
-        print "INFO: creating domain '{}' with uuid '{}'".format(dom_name,
-                                                                 dom_uuid)
+        print "INFO: creating domain '{}'".format(dom_name)
         if os.path.isdir(dom_path):
             if not force:
                 print("WARNING: domain path '{}' already exists - skipping "
@@ -110,12 +96,10 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
 
         ctxt = {'name': dom_name,
                 'ssh_user': ssh_lp_user,
-                'uuid': dom_uuid,
                 'backingfile': backingfile,
                 'img_path': imgpath,
                 'seed_path': seedpath,
-                'mac_addr1': generate_unicast_mac(),
-                'mac_addr2': generate_unicast_mac(),
+                'mem': domain_memory,
                 'size': root_disk_size,
                 'classic_snaps': snap_dict.get('classic'),
                 'stable_snaps': snap_dict.get('stable')}
@@ -124,7 +108,7 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
             del ctxt['seed_path']
 
         local_templates = ['snap_install.sh']
-        dom_templates = ['create-new.sh', 'domain.xml']
+        dom_templates = ['create-new.sh']
         if not skip_seed:
             dom_templates += ['user-data', 'meta-data']
 
@@ -150,22 +134,6 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
             with open('/dev/null') as fd:
                 subprocess.check_call(['./create-new.sh'], stdout=fd,
                                       stderr=fd)
-
-            try:
-                subprocess.check_output(['virsh', 'define', 'domain.xml'],
-                                        stderr=subprocess.STDOUT)
-            except subprocess.CalledProcessError as exc:
-                msg = ("error: operation failed: domain '{}' already "
-                       "exists with uuid ".format(dom_name))
-                if msg in exc.output and force:
-                    with open('/dev/null') as fd:
-                        subprocess.check_call(['virsh', 'undefine', dom_name],
-                                              stdout=fd, stderr=fd)
-                        subprocess.check_call(['virsh', 'define',
-                                               'domain.xml'],
-                                              stdout=fd, stderr=fd)
-                else:
-                    raise
         except:
             print("\nERROR: domain '{}' create unsuccessful: deleting "
                   "{}".format(dom_name, dom_path))
