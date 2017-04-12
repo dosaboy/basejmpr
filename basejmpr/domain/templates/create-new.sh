@@ -9,12 +9,13 @@ rm -f ${img}
 {%- endif %}
 virsh destroy {{name}} || true
 virsh undefine {{name}} || true
+qemu-img create -b {{backingfile}} -f qcow2 $img 40G
 virt-install \
     --name={{name}} \
     --connect=qemu:///system --ram={{mem}} --vcpus=1 --hvm --virt-type=kvm \
     --pxe --boot network,hd \
     --graphics vnc --noautoconsole --os-type=linux --accelerate \
-    --disk=${img},bus=virtio,format=qcow2,cache=none,sparse=true,size=32 \
+    --disk=${img},bus=virtio,cache=none,sparse=true \
     {%- if seed_path %}
     --disk={{seed_path}},bus=virtio,format=raw,cache=none \
     {%- endif %}
