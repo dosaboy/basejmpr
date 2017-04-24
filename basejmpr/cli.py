@@ -239,8 +239,10 @@ if __name__ == "__main__":
                         "domains")
     parser.add_argument('--domain-ssh-lp-id', type=str, default='hopem',
                         required=False, help="LP user to import ssh key.")
-    parser.add_argument('--domain-memory', type=int, default=4096,
+    parser.add_argument('--domain-memory', type=int, default=1024,
                         required=False, help="Domain mem size in MB.")
+    parser.add_argument('--domain-vcpus', type=int, default=1,
+                        required=False, help="vCPU count.")
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -276,5 +278,6 @@ if __name__ == "__main__":
                        args.num_domains, revisions,
                        args.domain_name_prefix, args.domain_root_disk_size,
                        args.domain_ssh_lp_id, args.domain_memory,
+                       args.domain_vcpus,
                        args.force, args.domain_no_seed,
                        snap_dict=snaps)

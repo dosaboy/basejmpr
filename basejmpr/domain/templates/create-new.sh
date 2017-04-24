@@ -12,7 +12,8 @@ virsh undefine {{name}} || true
 qemu-img create -b {{backingfile}} -f qcow2 $img 40G
 virt-install \
     --name={{name}} \
-    --connect=qemu:///system --ram={{mem}} --vcpus=1 --hvm --virt-type=kvm \
+    --connect=qemu:///system --ram={{mem}} --vcpus={{vcpus}} --hvm \
+    --virt-type=kvm \
     --pxe --boot network,hd \
     --graphics vnc --noautoconsole --os-type=linux --accelerate \
     --disk=${img},bus=virtio,cache=none,sparse=true \
