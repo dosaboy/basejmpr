@@ -23,7 +23,6 @@ import re
 import shutil
 import subprocess
 import uuid
-import random
 import tempfile
 
 
@@ -57,8 +56,9 @@ def domain_exists(name):
 def create_domains(root, base_root, revision, num_domains, base_revisions,
                    domain_name_prefix, root_disk_size, ssh_lp_user,
                    domain_memory, domain_vcpus, domain_boot_order, networks,
-                   force=False, skip_seed=False, skip_backingfile=False,
-                   snap_dict=None):
+                   domain_disks, domain_apt_proxy, force=False,
+                   skip_seed=False, skip_backingfile=False,
+                   skip_cleanup=False, snap_dict=None):
     if revision:
         rev = revision
     else:
@@ -102,17 +102,25 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
                 'seed_path': seedpath,
                 'mem': domain_memory,
                 'vcpus': domain_vcpus,
-                'size': root_disk_size,
+                'root_size': root_disk_size,
                 'boot_order': domain_boot_order,
                 'classic_snaps': snap_dict.get('classic'),
                 'stable_snaps': snap_dict.get('stable'),
-                'networks': networks.split(',')}
+                'networks': networks.split(','),
+                'apt_proxy': domain_apt_proxy}
 
         if skip_backingfile:
             del ctxt['backingfile']
 
         if skip_seed:
             del ctxt['seed_path']
+
+        if domain_disks:
+            disks = []
+            for i in xrange(domain_disks):
+                disks.append({'name': 'disk%s' % (i), 'size': '100G'})
+
+            ctxt['disks'] = disks
 
         local_templates = ['snap_install.sh']
         dom_templates = ['create-new.sh']
@@ -132,7 +140,9 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
                 shutil.copy(os.path.join(tmpdir, 'user-data.tmp'),
                             os.path.join(dom_path, 'user-data'))
         except:
-            shutil.rmtree(tmpdir)
+            if not skip_cleanup:
+                shutil.rmtree(tmpdir)
+
             raise
 
         os.chmod(os.path.join(dom_path, 'create-new.sh'), 0o0755)
@@ -144,5 +154,7 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
         except:
             print("\nERROR: domain '{}' create unsuccessful: deleting "
                   "{}".format(dom_name, dom_path))
-            shutil.rmtree(dom_path)
+            if not skip_cleanup:
+                shutil.rmtree(dom_path)
+
             raise

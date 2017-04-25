@@ -201,6 +201,8 @@ if __name__ == "__main__":
     parser.add_argument('--series', '-s', type=str, default='xenial',
                         required=False, help="Ubuntu series you want "
                         "to use")
+    parser.add_argument('--no-cleanup', action='store_true', default=False,
+                        help="Skip cleanup on failure.")
     parser.add_argument('--create-revision', action='store_true',
                         default=False, help="Whether to create a new "
                         "revision if one does not already exist. If "
@@ -237,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument('--domain-root-disk-size', type=str, default='40G',
                         required=False, help="Size of root disk for new "
                         "domains")
-    parser.add_argument('--domain-ssh-lp-id', type=str, default='hopem',
+    parser.add_argument('--domain-ssh-lp-id', type=str, default=None,
                         required=False, help="LP user to import ssh key.")
     parser.add_argument('--domain-memory', type=int, default=1024,
                         required=False, help="Domain mem size in MB.")
@@ -253,6 +255,10 @@ if __name__ == "__main__":
     parser.add_argument('--domain-no-backingfile', default=False,
                         action='store_true',
                         help="Create root disk without a backing file.")
+    parser.add_argument('--domain-num-disks', type=int, default=None,
+                        help="Number of disks to attach to each domain.")
+    parser.add_argument('--domain-apt-proxy', type=str,
+                        default=None)
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -289,7 +295,9 @@ if __name__ == "__main__":
                        args.domain_name_prefix, args.domain_root_disk_size,
                        args.domain_ssh_lp_id, args.domain_memory,
                        args.domain_vcpus, args.domain_boot_order,
-                       args.domain_networks,
+                       args.domain_networks, args.domain_num_disks,
+                       args.domain_apt_proxy,
                        args.force, args.domain_no_seed,
                        args.domain_no_backingfile,
+                       args.no_cleanup,
                        snap_dict=snaps)
