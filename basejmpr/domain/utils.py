@@ -57,7 +57,7 @@ def domain_exists(name):
 def create_domains(root, base_root, revision, num_domains, base_revisions,
                    domain_name_prefix, root_disk_size, ssh_lp_user,
                    domain_memory, domain_vcpus, domain_boot_order, networks,
-                   force=False, skip_seed=False,
+                   force=False, skip_seed=False, skip_backingfile=False,
                    snap_dict=None):
     if revision:
         rev = revision
@@ -107,6 +107,9 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
                 'classic_snaps': snap_dict.get('classic'),
                 'stable_snaps': snap_dict.get('stable'),
                 'networks': networks.split(',')}
+
+        if skip_backingfile:
+            del ctxt['backingfile']
 
         if skip_seed:
             del ctxt['seed_path']

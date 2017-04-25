@@ -9,7 +9,11 @@ rm -f ${img}
 {%- endif %}
 virsh destroy {{name}} || true
 virsh undefine {{name}} || true
+{%- if backingfile %}
 qemu-img create -b {{backingfile}} -f qcow2 $img {{size}}
+{% else %}
+qemu-img create -f qcow2 $img {{size}}
+{%- endif %}
 virt-install \
     --name={{name}} \
     --connect=qemu:///system --ram={{mem}} --vcpus={{vcpus}} --hvm \

@@ -250,6 +250,9 @@ if __name__ == "__main__":
                         help="Comma-seperated list of networks to bind domain "
                              "to. Note that these networks must already "
                              "exist.")
+    parser.add_argument('--domain-no-backingfile', default=False,
+                        action='store_true',
+                        help="Create root disk without a backing file.")
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -288,4 +291,5 @@ if __name__ == "__main__":
                        args.domain_vcpus, args.domain_boot_order,
                        args.domain_networks,
                        args.force, args.domain_no_seed,
+                       args.domain_no_backingfile,
                        snap_dict=snaps)
