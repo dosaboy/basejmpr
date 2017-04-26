@@ -1,5 +1,5 @@
 network-interfaces: |
 {%- for netid in networks %}
-  auto ens{{loop.index}}
-  iface ens{{loop.index}} inet dhcp
+  auto ens{{loop.index + 2}}
+  iface ens{{loop.index + 2}} inet dhcp
 {% endfor %}
