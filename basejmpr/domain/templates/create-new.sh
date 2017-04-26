@@ -15,6 +15,7 @@ qemu-img create -b {{backingfile}} -f qcow2 $img {{root_size}}
 qemu-img create -f qcow2 $img {{root_size}}
 {%- endif %}
 {%- for disk in disks %}
+sudo rm {{disk['name']}}
 qemu-img create -f qcow2 {{disk['name']}} {{disk['size']}}
 {%- endfor %}
 virt-install \
