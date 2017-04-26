@@ -166,16 +166,18 @@ def display_info(backers_path, revisions):
     c_by_rev = get_consumers_by_version(consumers)
     empty = True
     if c_by_rev:
+        _rev = None
         for rev in c_by_rev:
             if not args.revision or args.revision == rev:
                 if c_by_rev[rev]:
                     for d in c_by_rev[rev]:
-                        if empty:
+                        if _rev != rev:
                             backfile = os.path.basename(d['backing_file'])
                             print "{}:{}".format(rev, backfile)
 
                         empty = False
                         print "  -> {}".format(d['image'])
+                        _rev = rev
 
     if empty:
         print "-"
