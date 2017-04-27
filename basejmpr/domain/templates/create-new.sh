@@ -2,10 +2,10 @@
 img={{name}}.img
 {%- if seed_path %}
 seed={{name}}-seed.img
-rm -f ${img} ${seed}
+sudo rm -f ${img} ${seed}
 cloud-localds ${seed} user-data meta-data
 {%- else %}
-rm -f ${img}
+sudo rm -f ${img}
 {%- endif %}
 virsh destroy {{name}} || true
 virsh undefine {{name}} || true
@@ -15,7 +15,7 @@ qemu-img create -b {{backingfile}} -f qcow2 $img {{root_size}}
 qemu-img create -f qcow2 $img {{root_size}}
 {%- endif %}
 {%- for disk in disks %}
-sudo rm {{disk['name']}}
+sudo rm -f {{disk['name']}}
 qemu-img create -f qcow2 {{disk['name']}} {{disk['size']}}
 {%- endfor %}
 virt-install \
