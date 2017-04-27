@@ -24,12 +24,12 @@ virt-install \
     --virt-type=kvm \
     --pxe --boot {{boot_order}} \
     --graphics vnc --noautoconsole --os-type=linux --accelerate \
-    --disk=${img},bus=virtio,cache=none,sparse=true \
+    --disk=${img},bus=virtio,sparse=true \
     {%- for disk in disks %}
-    --disk={{disk['name']}},bus=virtio,cache=none,sparse=true \
+    --disk={{disk['name']}},bus=virtio,sparse=true \
     {%- endfor %}
     {%- if seed_path %}
-    --disk={{seed_path}},bus=virtio,format=raw,cache=none \
+    --disk={{seed_path}},bus=virtio,format=raw \
     {%- endif %}
     {%- for network in networks %}
     --network=network={{network}},model=virtio \
