@@ -261,6 +261,9 @@ if __name__ == "__main__":
                         help="Number of disks to attach to each domain.")
     parser.add_argument('--domain-apt-proxy', type=str,
                         default=None)
+    parser.add_argument('--domain-init-script', type=str, default=None)
+    parser.add_argument('--domain-user-data', type=str, default=None)
+    parser.add_argument('--domain-meta-data', type=str, default=None)
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -298,7 +301,8 @@ if __name__ == "__main__":
                        args.domain_ssh_lp_id, args.domain_memory,
                        args.domain_vcpus, args.domain_boot_order,
                        args.domain_networks, args.domain_num_disks,
-                       args.domain_apt_proxy,
+                       args.domain_apt_proxy, args.domain_init_script,
+                       args.domain_user_data, args.domain_meta_data,
                        args.force, args.domain_no_seed,
                        args.domain_no_backingfile,
                        args.no_cleanup,

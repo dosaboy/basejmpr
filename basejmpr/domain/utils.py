@@ -56,8 +56,9 @@ def domain_exists(name):
 def create_domains(root, base_root, revision, num_domains, base_revisions,
                    domain_name_prefix, root_disk_size, ssh_lp_user,
                    domain_memory, domain_vcpus, domain_boot_order, networks,
-                   domain_disks, domain_apt_proxy, force=False,
-                   skip_seed=False, skip_backingfile=False,
+                   domain_disks, domain_apt_proxy, domain_init_script,
+                   domain_user_data, domain_meta_data,
+                   force=False, skip_seed=False, skip_backingfile=False,
                    skip_cleanup=False, snap_dict=None):
     if revision:
         rev = revision
@@ -125,20 +126,42 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
         local_templates = ['snap_install.sh']
         dom_templates = ['create-new.sh']
         if not skip_seed:
-            dom_templates += ['user-data', 'meta-data']
+            if not domain_user_data:
+                dom_templates += ['user-data']
+
+            if not domain_meta_data:
+                dom_templates += ['meta-data']
 
         tmpdir = tempfile.mkdtemp()
         try:
             render_templates(ctxt, dom_path, dom_templates, tmpdir,
                              local_templates)
-            if any(snap_dict.values()):
-                subprocess.check_output(
-                    ['write-mime-multipart',
-                     '--output={}/user-data.tmp'.format(tmpdir),
-                     '{}/user-data'.format(dom_path),
-                     '{}/snap_install.sh:text/x-shellscript'.format(tmpdir)])
-                shutil.copy(os.path.join(tmpdir, 'user-data.tmp'),
-                            os.path.join(dom_path, 'user-data'))
+
+            if not skip_seed:
+                for input in [domain_user_data, domain_meta_data]:
+                    if input:
+                        tgt = os.path.join(dom_path,
+                                           os.path.basename(input))
+                        shutil.copy(input, tgt)
+
+                write_multipart = False
+                cmd = ['write-mime-multipart',
+                       '--output={}/user-data.tmp'.format(tmpdir),
+                       '{}/user-data'.format(dom_path)]
+                if any(snap_dict.values()):
+                    write_multipart = True
+                    cmd.append('{}/snap_install.sh:text/x-shellscript'
+                               .format(tmpdir))
+
+                if domain_init_script:
+                    write_multipart = True
+                    cmd.append('{}:text/x-shellscript'
+                               .format(domain_init_script))
+
+                if write_multipart:
+                    subprocess.check_output(cmd)
+                    shutil.copy(os.path.join(tmpdir, 'user-data.tmp'),
+                                os.path.join(dom_path, 'user-data'))
         except:
             if not skip_cleanup:
                 shutil.rmtree(tmpdir)

@@ -17,7 +17,3 @@ manage_etc_hosts: True
 {%- if apt_proxy %}
 apt_proxy: {{apt_proxy}}
 {%- endif %}
-#apt_sources:
-#  - source: "ppa:juju/stable"
-#packages:
-#   - juju
