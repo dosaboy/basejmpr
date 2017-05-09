@@ -1,0 +1,25 @@
+name: basejmpr
+version: 0.0.1 
+summary: Package runtime for basejmpr
+description: >
+   This package provides basejmpr.
+confinement: classic
+grade: stable
+
+apps:
+  basejmpr:
+    command: bin/basejmpr
+
+parts:
+  basejmpr:
+    source: .
+    plugin: python
+    python-version: python2
+    stage-packages:
+      - virt-manager
+      - python-jinja2
+      - cloud-image-utils
+  wrappers:
+    plugin: dump
+    source: snap/
+

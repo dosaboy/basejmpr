@@ -1,4 +1,3 @@
-#!/usr/bin/env python2
 # Author: Edward Hope-Morley (opentastic@gmail.com)
 # Description: QEMU Base Image Management Utility
 # Copyright (C) 2017 Edward Hope-Morley
@@ -25,7 +24,7 @@ import re
 import shutil
 import subprocess
 
-from domain.utils import create_domains
+from basejmpr.domain.utils import create_domains
 
 
 def get_consumers_by_version(consumers):
@@ -151,7 +150,8 @@ def get_link(basedir, v, f):
     return os.path.realpath(os.path.join(basedir, v, f))
 
 
-def display_info(backers_path, revisions):
+def display_info(root_path, backers_path, revisions, required_rev,
+                 show_detached=False):
     print "Available revisions:"
     if revisions:
         for v in sorted(revisions.keys(), key=lambda k: int(k)):
@@ -168,7 +168,7 @@ def display_info(backers_path, revisions):
     if c_by_rev:
         _rev = None
         for rev in c_by_rev:
-            if not args.revision or args.revision == rev:
+            if not required_rev or required_rev == rev:
                 if c_by_rev[rev]:
                     for d in c_by_rev[rev]:
                         if _rev != rev:
@@ -181,7 +181,7 @@ def display_info(backers_path, revisions):
     if empty:
         print "-"
 
-    if args.show_detached:
+    if show_detached:
         print "\nDetached:"
         empty = True
         for img in consumers:
@@ -195,7 +195,7 @@ def display_info(backers_path, revisions):
     print ""
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str, default=None,
                         required=True, help="Path to kvm images")
@@ -288,7 +288,8 @@ if __name__ == "__main__":
 
     # refresh
     filtered_revisions = get_revisions(backers_path, args.revision)
-    display_info(backers_path, filtered_revisions)
+    display_info(root_path, backers_path, filtered_revisions, args.revision,
+                 show_detached=args.show_detached)
 
     if args.create_domain:
         snaps = {'classic': args.domain_snaps_classic,
