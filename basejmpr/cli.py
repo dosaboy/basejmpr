@@ -152,7 +152,7 @@ def get_link(basedir, v, f):
 
 
 def display_info(backers_path, revisions):
-    print "Available base revisions:"
+    print "Available revisions:"
     if revisions:
         for v in sorted(revisions.keys(), key=lambda k: int(k)):
             files = ['{} <- {}'.format(f, get_link(backers_path, v, f))
@@ -172,11 +172,10 @@ def display_info(backers_path, revisions):
                 if c_by_rev[rev]:
                     for d in c_by_rev[rev]:
                         if _rev != rev:
-                            backfile = os.path.basename(d['backing_file'])
-                            print "{}:{}".format(rev, backfile)
+                            print "{}:".format(rev)
 
                         empty = False
-                        print "  -> {}".format(d['image'])
+                        print "  {}".format(d['image'])
                         _rev = rev
 
     if empty:

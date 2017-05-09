@@ -138,10 +138,10 @@ def create_domains(root, base_root, revision, num_domains, base_revisions,
                              local_templates)
 
             if not skip_seed:
-                for input in [domain_user_data, domain_meta_data]:
+                for input, tgt in {domain_user_data: 'user-data',
+                                   domain_meta_data: 'meta-data'}.iteritems():
                     if input:
-                        tgt = os.path.join(dom_path,
-                                           os.path.basename(input))
+                        tgt = os.path.join(dom_path, tgt)
                         shutil.copy(input, tgt)
 
                 write_multipart = False
