@@ -8,6 +8,7 @@ setup(
     description="basejmpr is a tool for creating kvm instances",
     url="https://github.com/dosaboy/basejmpr",
     packages=find_packages(),
+    package_data={'basejmpr': ['domain/templates/*']},
     entry_points={
         "console_scripts": [
             "basejmpr = basejmpr.cli:main",

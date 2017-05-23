@@ -32,7 +32,7 @@ from jinja2 import Environment, PackageLoader
 def render_templates(ctxt, dom_path, dom_templates, local_path,
                      local_templates):
     env = Environment()
-    env.loader = PackageLoader('domain', 'templates')
+    env.loader = PackageLoader('basejmpr.domain', 'templates')
     # Expect to fail if exists
     os.makedirs(dom_path)
     for t in dom_templates:
