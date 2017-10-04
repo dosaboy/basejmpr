@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with basejmpr. If not, see <http://www.gnu.org/licenses/>.
 import argparse
+import collections
 import os
 import re
 import shutil
@@ -40,7 +41,8 @@ def get_consumers_by_version(consumers):
             else:
                 _c_by_v[ver] = [entry]
 
-    return _c_by_v
+    return collections.OrderedDict(sorted(_c_by_v.items(),
+                                          key=lambda t: t[0]))
 
 
 def get_consumers(root_dir, base_revs):
@@ -197,8 +199,9 @@ def display_info(root_path, backers_path, revisions, required_rev,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', '-p', type=str, default=None,
-                        required=True, help="Path to kvm images")
+    parser.add_argument('--path', '-p', type=str,
+                        default='/var/lib/libvirt/images',
+                        required=False, help="Path to kvm images")
     parser.add_argument('--series', '-s', type=str, default='xenial',
                         required=False, help="Ubuntu series you want "
                         "to use")
@@ -288,9 +291,6 @@ def main():
 
     # refresh
     filtered_revisions = get_revisions(backers_path, args.revision)
-    display_info(root_path, backers_path, filtered_revisions, args.revision,
-                 show_detached=args.show_detached)
-
     if args.create_domain:
         snaps = {'classic': args.domain_snaps_classic,
                  'stable': args.domain_snaps}
@@ -307,3 +307,7 @@ def main():
                        args.domain_no_backingfile,
                        args.no_cleanup,
                        snap_dict=snaps)
+        print ""  # blank line
+
+    display_info(root_path, backers_path, filtered_revisions, args.revision,
+                 show_detached=args.show_detached)
