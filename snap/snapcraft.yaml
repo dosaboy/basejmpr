@@ -2,13 +2,20 @@ name: basejmpr
 version: 0.0.1 
 summary: Package runtime for basejmpr
 description: >
-   This package provides basejmpr.
+   This package provides basejmpr, a tool that makes it easy to create one or
+   more kvm instance with a specific configuration and optionally backed by
+   an Ubuntu cloud image. It also provides the ability to visualise and manage
+   your backing images.
 confinement: classic
 grade: stable
 
 apps:
   basejmpr:
     command: bin/basejmpr
+    plugs:
+        - home
+        - network
+        - libvirt
 
 parts:
   basejmpr:
@@ -22,4 +29,3 @@ parts:
   wrappers:
     plugin: dump
     source: snap/
-

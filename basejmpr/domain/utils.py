@@ -53,17 +53,29 @@ def domain_exists(name):
     return result is not None and result.group(0).strip() == name
 
 
-def create_domains(root, base_root, revision, num_domains, base_revisions,
-                   domain_name_prefix, root_disk_size, ssh_lp_user,
-                   domain_memory, domain_vcpus, domain_boot_order, networks,
-                   domain_disks, domain_apt_proxy, domain_init_script,
-                   domain_user_data, domain_meta_data,
+def create_domains(root, base_root, revision, series, num_domains,
+                   base_revisions, domain_name_prefix, root_disk_size,
+                   ssh_lp_user, domain_memory, domain_vcpus, domain_boot_order,
+                   networks, domain_disks, domain_apt_proxy,
+                   domain_init_script, domain_user_data, domain_meta_data,
                    force=False, skip_seed=False, skip_backingfile=False,
                    skip_cleanup=False, snap_dict=None):
+
+    rev = None
     if revision:
         rev = revision
     else:
-        rev = str(max([int(k) for k in base_revisions.keys()]))
+        revs = sorted([int(idx) for idx in base_revisions.keys()],
+                      reverse=True)
+        for r in revs:
+            r = str(r)
+            _series = base_revisions[r]['targets'][0].partition('-')[0]
+            if series and series == _series:
+                rev = r
+                break
+
+    if not rev:
+        raise Exception("No revision found for series '{}'".format(series))
 
     backingfile = os.path.join(base_root, rev,
                                base_revisions[rev]['files'][0])

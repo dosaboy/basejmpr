@@ -86,7 +86,7 @@ def get_consumers(root_dir, base_revs):
     return consumers
 
 
-def create_revision(basedir, series_list, rev):
+def create_revision(basedir, series, rev):
     newpath = os.path.join(basedir, rev)
     if os.path.isdir(newpath):
         raise Exception("Base revision '{}' already exists".format(rev))
@@ -95,38 +95,46 @@ def create_revision(basedir, series_list, rev):
     os.makedirs(os.path.join(newpath, 'meta'))
     os.makedirs(os.path.join(newpath, 'targets'))
     try:
-        for series in series_list:
-            items = [{'url': ('https://cloud-images.ubuntu.com/%s/current/'
-                              '%s-server-cloudimg-amd64-disk1.img' %
-                              (series, series)),
-                      'out': os.path.join(newpath, 'targets',
-                                          '%s-server-cloudimg-amd64-disk1.img'
-                                          % (series))},
-                     {'url':
-                      ('https://cloud-images.ubuntu.com/%s/current/'
-                       'SHA256SUMS' % (series)),
-                      'out': os.path.join(newpath, 'meta/SHA256SUMS')},
-                     {'url': ('https://cloud-images.ubuntu.com/%s/current/'
-                              '%s-server-cloudimg-amd64.manifest' %
-                              (series, series)),
-                      'out': os.path.join(newpath, 'meta/manifest')}]
-            for item in items:
-                subprocess.check_output(['wget', '-O', item['out'],
-                                         item['url']])
+        items = [{'url':
+                  ('https://cloud-images.ubuntu.com/{}/current/'
+                   'SHA256SUMS'.format(series)),
+                  'out': os.path.join(newpath, 'meta/SHA256SUMS')},
+                 {'url': ('https://cloud-images.ubuntu.com/{}/current/'
+                          '{}-server-cloudimg-amd64.manifest'.
+                          format(series, series)),
+                  'out': os.path.join(newpath, 'meta/manifest')}]
 
-            revs = get_revisions(basedir, rev=rev)
-            with open(os.path.join(newpath, 'meta/SHA256SUMS')) as fd:
-                for line in fd.readlines():
-                    for target in revs[rev]['targets']:
-                        if target in line:
-                            link = os.path.join(newpath,
-                                                line.partition(' ')[0])
-                            target = os.path.join('targets', target)
-                            subprocess.check_output(['chattr', '-i',
-                                                     os.path.join(newpath,
-                                                                  target)])
-                            subprocess.check_output(['ln', '-fs',
-                                                     target, link])
+        _url = ('https://cloud-images.ubuntu.com/{}/current/'
+                '{}-server-cloudimg-amd64')
+        _url_extra = ''
+        if series >= 'trusty':
+            _url_extra = '-disk1'
+
+        items.append({'url': '{}{}.img'.format(_url.format(series, series),
+                                               _url_extra),
+                      'out': os.path.join(newpath, 'targets',
+                                    '{}-server-cloudimg-amd64{}.img'.
+                                    format(series, _url_extra))})
+
+        for item in items:
+            subprocess.check_output(['wget', '-O', item['out'],
+                                     item['url']])
+        revs = get_revisions(basedir, rev=rev)
+        with open(os.path.join(newpath, 'meta/SHA256SUMS')) as fd:
+            link = None
+            for line in fd.readlines():
+                for target in revs[rev]['targets']:
+                    if target in line:
+                        link = os.path.join(newpath,
+                                            line.partition(' ')[0])
+                        target = os.path.join('targets', target)
+                        subprocess.check_output(['chattr', '-i',
+                                                 os.path.join(newpath,
+                                                              target)])
+                        subprocess.check_output(['ln', '-fs',
+                                                 target, link])
+            if not link:
+                raise Exception("Unable to create target link")
     except:
         shutil.rmtree(newpath)
         raise
@@ -202,7 +210,7 @@ def main():
     parser.add_argument('--path', '-p', type=str,
                         default='/var/lib/libvirt/images',
                         required=False, help="Path to kvm images")
-    parser.add_argument('--series', '-s', type=str, default='xenial',
+    parser.add_argument('--series', '-s', type=str, default='bionic',
                         required=False, help="Ubuntu series you want "
                         "to use")
     parser.add_argument('--no-cleanup', action='store_true', default=False,
@@ -269,7 +277,7 @@ def main():
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
-    series = [args.series] or ['trusty', 'xenial']
+    series = args.series
     backers_path = os.path.join(root_path, 'backing_files')
 
     if not os.path.isdir(root_path):
@@ -295,7 +303,7 @@ def main():
         snaps = {'classic': args.domain_snaps_classic,
                  'stable': args.domain_snaps}
         revisions = get_revisions(backers_path)
-        create_domains(root_path, backers_path, args.revision,
+        create_domains(root_path, backers_path, args.revision, series,
                        args.num_domains, revisions,
                        args.domain_name_prefix, args.domain_root_disk_size,
                        args.domain_ssh_lp_id, args.domain_memory,
