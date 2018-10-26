@@ -22,7 +22,7 @@ virsh undefine {{name}} || true
 
 virt-install \
     --name={{name}} \
-    --connect=qemu:///system --ram={{mem}} --vcpus={{vcpus}} --hvm \
+    --connect=qemu:///system --ram={{mem}} --cpu host --vcpus={{vcpus}} --hvm \
     --virt-type=kvm \
     --pxe --boot {{boot_order}} \
     --graphics vnc --noautoconsole --os-type=linux --accelerate \
