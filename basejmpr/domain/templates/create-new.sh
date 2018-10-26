@@ -7,8 +7,6 @@ cloud-localds ${seed} user-data meta-data
 {%- else %}
 sudo rm -f ${img}
 {%- endif %}
-virsh destroy {{name}} || true
-virsh undefine {{name}} || true
 {%- if backingfile %}
 qemu-img create -b {{backingfile}} -f qcow2 $img {{root_size}}
 {% else %}
@@ -18,6 +16,10 @@ qemu-img create -f qcow2 $img {{root_size}}
 sudo rm -f {{disk['name']}}
 qemu-img create -f qcow2 {{disk['name']}} {{disk['size']}}
 {%- endfor %}
+
+virsh destroy {{name}} || true
+virsh undefine {{name}} || true
+
 virt-install \
     --name={{name}} \
     --connect=qemu:///system --ram={{mem}} --vcpus={{vcpus}} --hvm \
