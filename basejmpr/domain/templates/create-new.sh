@@ -3,7 +3,7 @@ img={{name}}.img
 {%- if seed_path %}
 seed={{name}}-seed.img
 sudo rm -f ${img} ${seed}
-cloud-localds ${seed} user-data meta-data
+cloud-localds ${seed} user-data {{network_config}}
 {%- else %}
 sudo rm -f ${img}
 {%- endif %}
@@ -26,9 +26,9 @@ virt-install \
     --virt-type=kvm \
     --pxe --boot {{boot_order}} \
     --graphics vnc --noautoconsole --os-type=linux --accelerate \
-    --disk=${img},bus=virtio,sparse=true \
+    --disk=${img},bus={{primary_disk['bus']}},sparse=true \
     {%- for disk in disks %}
-    --disk={{disk['name']}},bus=virtio,sparse=true \
+    --disk={{disk['name']}},bus={{disk['bus']}},sparse=true \
     {%- endfor %}
     {%- if seed_path %}
     --disk={{seed_path}},bus=virtio,format=raw \

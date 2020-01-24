@@ -274,6 +274,8 @@ def main():
     parser.add_argument('--domain-init-script', type=str, default=None)
     parser.add_argument('--domain-user-data', type=str, default=None)
     parser.add_argument('--domain-meta-data', type=str, default=None)
+    parser.add_argument('--domain-net-config', type=str, default=None)
+    parser.add_argument('--domain-disk-bus', type=str, default="virtio")
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -311,6 +313,8 @@ def main():
                        args.domain_networks, args.domain_num_disks,
                        args.domain_apt_proxy, args.domain_init_script,
                        args.domain_user_data, args.domain_meta_data,
+                       args.domain_net_config,
+                       args.domain_disk_bus,
                        args.force, args.domain_no_seed,
                        args.domain_no_backingfile,
                        args.no_cleanup,

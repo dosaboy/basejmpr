@@ -58,6 +58,7 @@ def create_domains(root, base_root, revision, series, num_domains,
                    ssh_lp_user, domain_memory, domain_vcpus, domain_boot_order,
                    networks, domain_disks, domain_apt_proxy,
                    domain_init_script, domain_user_data, domain_meta_data,
+                   domain_net_config, domain_disk_bus,
                    force=False, skip_seed=False, skip_backingfile=False,
                    skip_cleanup=False, snap_dict=None):
 
@@ -128,10 +129,12 @@ def create_domains(root, base_root, revision, series, num_domains,
         if skip_seed:
             del ctxt['seed_path']
 
+        ctxt['primary_disk'] = {'bus': domain_disk_bus}
         if domain_disks:
             disks = []
             for i in xrange(domain_disks):
-                disks.append({'name': 'disk%s' % (i), 'size': '100G'})
+                disks.append({'name': 'disk%s' % (i), 'size': '100G',
+                              'bus': domain_disk_bus})
 
             ctxt['disks'] = disks
 
@@ -141,7 +144,12 @@ def create_domains(root, base_root, revision, series, num_domains,
             if not domain_user_data:
                 dom_templates += ['user-data']
 
-            if not domain_meta_data:
+            if domain_meta_data:
+		ctxt['network_config'] = 'meta-data'
+            elif domain_net_config:
+		ctxt['network_config'] = '--network-config network-config'
+            else:
+		ctxt['network_config'] = 'meta-data'
                 dom_templates += ['meta-data']
 
         tmpdir = tempfile.mkdtemp()
@@ -174,6 +182,10 @@ def create_domains(root, base_root, revision, series, num_domains,
                     subprocess.check_output(cmd)
                     shutil.copy(os.path.join(tmpdir, 'user-data.tmp'),
                                 os.path.join(dom_path, 'user-data'))
+
+                if domain_net_config:
+                    shutil.copy(domain_net_config,
+                                os.path.join(dom_path, 'network-config'))
         except:
             if not skip_cleanup:
                 shutil.rmtree(tmpdir)
