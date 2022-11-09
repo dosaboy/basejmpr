@@ -211,7 +211,7 @@ def main():
     parser.add_argument('--path', '-p', type=str,
                         default='/var/lib/libvirt/images',
                         required=False, help="Path to kvm images")
-    parser.add_argument('--series', '-s', type=str, default='bionic',
+    parser.add_argument('--series', '-s', type=str, default='jammy',
                         required=False, help="Ubuntu series you want "
                         "to use")
     parser.add_argument('--no-cleanup', action='store_true', default=False,

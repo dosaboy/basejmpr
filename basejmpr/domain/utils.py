@@ -47,7 +47,7 @@ def render_templates(ctxt, dom_path, dom_templates, local_path,
 
 
 def domain_exists(name):
-    out = subprocess.check_output(['virsh', 'list', '--all'])
+    out = subprocess.check_output(['virsh', 'list', '--all']).decode('utf-8')
     key = re.compile(r' %s ' % name)
     result = re.search(key, out)
     return result is not None and result.group(0).strip() == name
@@ -110,6 +110,7 @@ def create_domains(root, base_root, revision, series, num_domains,
             continue
 
         ctxt = {'name': dom_name,
+                'series': series,
                 'ssh_user': ssh_lp_user,
                 'backingfile': backingfile,
                 'img_path': imgpath,
@@ -159,7 +160,7 @@ def create_domains(root, base_root, revision, series, num_domains,
 
             if not skip_seed:
                 for input, tgt in {domain_user_data: 'user-data',
-                                   domain_meta_data: 'meta-data'}.iteritems():
+                                   domain_meta_data: 'meta-data'}.items():
                     if input:
                         tgt = os.path.join(dom_path, tgt)
                         shutil.copy(input, tgt)

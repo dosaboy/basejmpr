@@ -8,7 +8,7 @@ cloud-localds ${seed} user-data {{network_config}}
 sudo rm -f ${img}
 {%- endif %}
 {%- if backingfile %}
-qemu-img create -b {{backingfile}} -f qcow2 $img {{root_size}}
+qemu-img create -F qcow2 -b {{backingfile}} -f qcow2 $img {{root_size}}
 {% else %}
 qemu-img create -f qcow2 $img {{root_size}}
 {%- endif %}
@@ -22,6 +22,7 @@ virsh undefine {{name}} || true
 
 virt-install \
     --name={{name}} \
+    --osinfo=ubuntu{{series}} \
     --connect=qemu:///system --ram={{mem}} --cpu host --vcpus={{vcpus}} --hvm \
     --virt-type=kvm \
     --pxe --boot {{boot_order}} \
