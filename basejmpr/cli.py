@@ -56,6 +56,7 @@ def get_consumers(root_dir, base_revs):
                     info = subprocess.check_output(['qemu-img', 'info',
                                                     img_path],
                                                    stderr=subprocess.STDOUT)
+                    info = info.decode('utf-8')
                 except subprocess.CalledProcessError:
                     continue
 
@@ -99,9 +100,9 @@ def create_revision(basedir, series, rev):
                   ('https://cloud-images.ubuntu.com/{}/current/'
                    'SHA256SUMS'.format(series)),
                   'out': os.path.join(newpath, 'meta/SHA256SUMS')},
-                 {'url': ('https://cloud-images.ubuntu.com/{}/current/'
-                          '{}-server-cloudimg-amd64.manifest'.
-                          format(series, series)),
+                 {'url': ('https://cloud-images.ubuntu.com/{series}/current/'
+                          '{series}-server-cloudimg-amd64.manifest'.
+                          format(series=series)),
                   'out': os.path.join(newpath, 'meta/manifest')}]
 
         _url = ('https://cloud-images.ubuntu.com/{}/current/'
@@ -113,8 +114,8 @@ def create_revision(basedir, series, rev):
         items.append({'url': '{}{}.img'.format(_url.format(series, series),
                                                _url_extra),
                       'out': os.path.join(newpath, 'targets',
-                                    '{}-server-cloudimg-amd64{}.img'.
-                                    format(series, _url_extra))})
+                                          '{}-server-cloudimg-amd64{}.img'.
+                                          format(series, _url_extra))})
 
         for item in items:
             subprocess.check_output(['wget', '-O', item['out'],
@@ -135,7 +136,7 @@ def create_revision(basedir, series, rev):
                                                  target, link])
             if not link:
                 raise Exception("Unable to create target link")
-    except:
+    except Exception:
         shutil.rmtree(newpath)
         raise
 
@@ -162,17 +163,17 @@ def get_link(basedir, v, f):
 
 def display_info(root_path, backers_path, revisions, required_rev,
                  show_detached=False):
-    print "Available revisions:"
+    print("Available revisions:")
     if revisions:
         for v in sorted(revisions.keys(), key=lambda k: int(k)):
             files = ['{} <- {}'.format(f, get_link(backers_path, v, f))
                      for f in revisions[v]['files']]
-            print "{}:{}".format(v, ', '.join(files))
+            print("{}:{}".format(v, ', '.join(files)))
     else:
-        print "-"
+        print("-")
 
     consumers = get_consumers(root_path, revisions)
-    print "\nConsumers:"
+    print("\nConsumers:")
     c_by_rev = get_consumers_by_version(consumers)
     empty = True
     if c_by_rev:
@@ -182,27 +183,27 @@ def display_info(root_path, backers_path, revisions, required_rev,
                 if c_by_rev[rev]:
                     for d in c_by_rev[rev]:
                         if _rev != rev:
-                            print "{}:".format(rev)
+                            print("{}:".format(rev))
 
                         empty = False
-                        print "  {}".format(d['image'])
+                        print("  {}".format(d['image']))
                         _rev = rev
 
     if empty:
-        print "-"
+        print("-")
 
     if show_detached:
-        print "\nDetached:"
+        print("\nDetached:")
         empty = True
         for img in consumers:
             if not consumers[img].get('version'):
                 empty = False
-                print "{}".format(img)
+                print("{}".format(img))
 
         if empty:
-            print "-"
+            print("-")
 
-    print ""
+    print("")
 
 
 def main():
@@ -290,12 +291,13 @@ def main():
     rev = args.revision
     if rev and not revisions.get(rev) and not args.create_revision:
         raise Exception("Revision '{}' does not exist".format(rev))
-    elif (not revisions or (rev and not revisions.get(rev)) or
+
+    if (not revisions or (rev and not revisions.get(rev)) or
             (args.create_revision)):
         if not revisions:
             rev = '1'
         elif not rev:
-            rev = str(max([int(k) for k in revisions.keys()]) + 1)
+            rev = str(max([int(k) for k in revisions]) + 1)
 
         create_revision(backers_path, series, rev)
 
@@ -319,7 +321,7 @@ def main():
                        args.domain_no_backingfile,
                        args.no_cleanup,
                        snap_dict=snaps)
-        print ""  # blank line
+        print("")  # blank line
 
     display_info(root_path, backers_path, filtered_revisions, args.revision,
                  show_detached=args.show_detached)

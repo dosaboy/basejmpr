@@ -85,7 +85,7 @@ def create_domains(root, base_root, revision, series, num_domains,
         num_domains = 1
 
     name = domain_name_prefix or str(uuid.uuid4())
-    for n in xrange(num_domains):
+    for n in range(num_domains):
         if num_domains > 1:
             dom_name = '{}{}'.format(name, n)
         else:
@@ -94,16 +94,16 @@ def create_domains(root, base_root, revision, series, num_domains,
         dom_path = os.path.join(root, dom_name)
         imgpath = os.path.join(dom_path, '{}.img'.format(dom_name))
         seedpath = os.path.join(dom_path, '{}-seed.img'.format(dom_name))
-        print "INFO: creating domain '{}'".format(dom_name)
+        print("INFO: creating domain '{}'".format(dom_name))
         if os.path.isdir(dom_path):
             if not force:
                 print("WARNING: domain path '{}' already exists - skipping "
                       "create".format(dom_path))
                 continue
-            else:
-                print("INFO: domain path '{}' already exists - "
-                      "overwriting".format(dom_path))
-                shutil.rmtree(dom_path)
+
+            print("INFO: domain path '{}' already exists - "
+                  "overwriting".format(dom_path))
+            shutil.rmtree(dom_path)
         elif domain_exists(dom_name) and not force:
             print("WARNING: domain '{}' already exists - skipping "
                   "create".format(dom_name))
@@ -132,7 +132,7 @@ def create_domains(root, base_root, revision, series, num_domains,
         ctxt['primary_disk'] = {'bus': domain_disk_bus}
         if domain_disks:
             disks = []
-            for i in xrange(domain_disks):
+            for i in range(domain_disks):
                 disks.append({'name': 'disk%s' % (i), 'size': '100G',
                               'bus': domain_disk_bus})
 
@@ -145,11 +145,11 @@ def create_domains(root, base_root, revision, series, num_domains,
                 dom_templates += ['user-data']
 
             if domain_meta_data:
-		ctxt['network_config'] = 'meta-data'
+                ctxt['network_config'] = 'meta-data'
             elif domain_net_config:
-		ctxt['network_config'] = '--network-config network-config'
+                ctxt['network_config'] = '--network-config network-config'
             else:
-		ctxt['network_config'] = 'meta-data'
+                ctxt['network_config'] = 'meta-data'
                 dom_templates += ['meta-data']
 
         tmpdir = tempfile.mkdtemp()
@@ -186,7 +186,7 @@ def create_domains(root, base_root, revision, series, num_domains,
                 if domain_net_config:
                     shutil.copy(domain_net_config,
                                 os.path.join(dom_path, 'network-config'))
-        except:
+        except Exception:
             if not skip_cleanup:
                 shutil.rmtree(tmpdir)
 
@@ -198,7 +198,7 @@ def create_domains(root, base_root, revision, series, num_domains,
             with open('/dev/null') as fd:
                 subprocess.check_call(['./create-new.sh'], stdout=fd,
                                       stderr=fd)
-        except:
+        except Exception:
             print("\nERROR: domain '{}' create unsuccessful: deleting "
                   "{}".format(dom_name, dom_path))
             if not skip_cleanup:
