@@ -6,8 +6,9 @@ description: >
    more kvm instance with a specific configuration and optionally backed by
    an Ubuntu cloud image. It also provides the ability to visualise and manage
    your backing images.
-confinement: classic
-grade: stable
+confinement: devmode
+base: core20
+grade: beta
 
 apps:
   basejmpr:
@@ -21,10 +22,9 @@ parts:
   basejmpr:
     source: .
     plugin: python
-    python-version: python2
     stage-packages:
       - virt-manager
-      - python-jinja2
+      - python3-jinja2
       - cloud-image-utils
   wrappers:
     plugin: dump

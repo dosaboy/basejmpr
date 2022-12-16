@@ -210,73 +210,74 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', '-p', type=str,
                         default='/var/lib/libvirt/images',
-                        required=False, help="Path to kvm images")
+                        required=False, help="Path to images")
     parser.add_argument('--series', '-s', type=str, default='jammy',
                         required=False, help="Ubuntu series you want "
                         "to use")
     parser.add_argument('--no-cleanup', action='store_true', default=False,
-                        help="Skip cleanup on failure.")
+                        help="Skip cleanup on failure. Useful for debugging")
     parser.add_argument('--create-revision', action='store_true',
-                        default=False, help="Whether to create a new "
-                        "revision if one does not already exist. If "
-                        "--revision is provided will attempt to create that "
-                        "revision otherwise highest rev + 1")
+                        default=False, help="Create a new revision if one "
+                        "does not already exist. Use --revision to create a "
+                        "specific one otherwise uses highest available + 1")
     parser.add_argument('--show-detached', action='store_true', default=False,
                         help="Show qcow2 images that do not have a "
                         "revisioned backing file")
-    parser.add_argument('--create-domain', action='store_true',
+    parser.add_argument('--create', action='store_true',
                         default=False, help="Create a new domain.")
     parser.add_argument('--num-domains', type=int, default=None,
                         required=False, help="Number of domains to "
                         "create. (requires --create-new-domains)")
-    parser.add_argument('--domain-name-prefix', type=str, default=None,
+    parser.add_argument('--name', type=str, default=None,
                         required=False, help="Name to be used for new "
                         "domains created. If multiple domains are created "
                         "they will be suffixed with an integer counter.")
     parser.add_argument('--revision', '-r', type=str, default=None,
                         required=False, help="Backing file revision to "
                         "use.")
+    parser.add_argument('--nic-prefix', type=str, default='ens3',
+                        required=False, help="Network interface name prefix.")
     parser.add_argument('--force', action='store_true', default=False,
                         required=False, help="Force actions such as "
                         "creating domains that already exist.")
-    parser.add_argument('--domain-no-seed', action='store_true', default=False,
+    parser.add_argument('--no-seed', action='store_true', default=False,
                         required=False, help="Do not seed new domains "
                         "with a cloud-init config-drive.")
-    parser.add_argument('--domain-snaps', type=str, default=None,
+    parser.add_argument('--snaps', type=str, default=None,
                         required=False, help="Comma-delimited list of snaps "
                         "to install in domain(s) if creating new ones")
-    parser.add_argument('--domain-snaps-classic', type=str, default=None,
+    parser.add_argument('--snaps-classic', type=str, default=None,
                         required=False, help="Comma-delimited list of snaps "
                         "to install in domain(s) if creating new ones. These "
                         "snaps will be install using --classic mode")
-    parser.add_argument('--domain-root-disk-size', type=str, default='40G',
+    parser.add_argument('--root-disk-size', type=str, default='40G',
                         required=False, help="Size of root disk for new "
                         "domains")
-    parser.add_argument('--domain-ssh-lp-id', type=str, default=None,
+    parser.add_argument('--ssh-lp-id', type=str, default=None,
                         required=False, help="LP user to import ssh key.")
-    parser.add_argument('--domain-memory', type=int, default=1024,
+    parser.add_argument('--memory', type=int, default=1024,
                         required=False, help="Domain mem size in MB.")
-    parser.add_argument('--domain-vcpus', type=int, default=1,
+    parser.add_argument('--vcpus', type=int, default=1,
                         required=False, help="vCPU count.")
-    parser.add_argument('--domain-boot-order', type=str, default='network,hd',
+    parser.add_argument('--boot-order', type=str, default='network,hd',
                         help="Domain boot order list (comma-seperated list of "
                              "boot devices)")
-    parser.add_argument('--domain-networks', type=str, default='default',
+    parser.add_argument('--networks', type=str, default='default',
                         help="Comma-seperated list of networks to bind domain "
                              "to. Note that these networks must already "
                              "exist.")
-    parser.add_argument('--domain-no-backingfile', default=False,
+    parser.add_argument('--no-backingfile', default=False,
                         action='store_true',
                         help="Create root disk without a backing file.")
-    parser.add_argument('--domain-num-disks', type=int, default=None,
+    parser.add_argument('--num-disks', type=int, default=None,
                         help="Number of disks to attach to each domain.")
-    parser.add_argument('--domain-apt-proxy', type=str,
+    parser.add_argument('--apt-proxy', type=str,
                         default=None)
-    parser.add_argument('--domain-init-script', type=str, default=None)
-    parser.add_argument('--domain-user-data', type=str, default=None)
-    parser.add_argument('--domain-meta-data', type=str, default=None)
-    parser.add_argument('--domain-net-config', type=str, default=None)
-    parser.add_argument('--domain-disk-bus', type=str, default="virtio")
+    parser.add_argument('--init-script', type=str, default=None)
+    parser.add_argument('--user-data', type=str, default=None)
+    parser.add_argument('--meta-data', type=str, default=None)
+    parser.add_argument('--net-config', type=str, default=None)
+    parser.add_argument('--disk-bus', type=str, default="virtio")
     args = parser.parse_args()
 
     root_path = os.path.realpath(args.path)
@@ -303,23 +304,24 @@ def main():
 
     # refresh
     filtered_revisions = get_revisions(backers_path, args.revision)
-    if args.create_domain:
-        snaps = {'classic': args.domain_snaps_classic,
-                 'stable': args.domain_snaps}
+    if args.create:
+        snaps = {'classic': args.snaps_classic,
+                 'stable': args.snaps}
         revisions = get_revisions(backers_path)
         create_domains(root_path, backers_path, args.revision, series,
                        args.num_domains, revisions,
-                       args.domain_name_prefix, args.domain_root_disk_size,
-                       args.domain_ssh_lp_id, args.domain_memory,
-                       args.domain_vcpus, args.domain_boot_order,
-                       args.domain_networks, args.domain_num_disks,
-                       args.domain_apt_proxy, args.domain_init_script,
-                       args.domain_user_data, args.domain_meta_data,
-                       args.domain_net_config,
-                       args.domain_disk_bus,
-                       args.force, args.domain_no_seed,
-                       args.domain_no_backingfile,
+                       args.name, args.root_disk_size,
+                       args.ssh_lp_id, args.memory,
+                       args.vcpus, args.boot_order,
+                       args.networks, args.num_disks,
+                       args.apt_proxy, args.init_script,
+                       args.user_data, args.meta_data,
+                       args.net_config,
+                       args.disk_bus,
+                       args.force, args.no_seed,
+                       args.no_backingfile,
                        args.no_cleanup,
+                       nic_prefix=args.nic_prefix,
                        snap_dict=snaps)
         print("")  # blank line
 

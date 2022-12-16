@@ -60,7 +60,7 @@ def create_domains(root, base_root, revision, series, num_domains,
                    domain_init_script, domain_user_data, domain_meta_data,
                    domain_net_config, domain_disk_bus,
                    force=False, skip_seed=False, skip_backingfile=False,
-                   skip_cleanup=False, snap_dict=None):
+                   skip_cleanup=False, nic_prefix=None, snap_dict=None):
 
     rev = None
     if revision:
@@ -122,7 +122,8 @@ def create_domains(root, base_root, revision, series, num_domains,
                 'classic_snaps': snap_dict.get('classic'),
                 'stable_snaps': snap_dict.get('stable'),
                 'networks': networks.split(','),
-                'apt_proxy': domain_apt_proxy}
+                'apt_proxy': domain_apt_proxy,
+                'nic_prefix': nic_prefix}
 
         if skip_backingfile:
             del ctxt['backingfile']
