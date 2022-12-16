@@ -8,7 +8,7 @@ description: >
    your backing images.
 confinement: devmode
 base: core20
-grade: beta
+grade: devel
 
 apps:
   basejmpr:
@@ -24,8 +24,9 @@ parts:
     plugin: python
     stage-packages:
       - virt-manager
-      - python3-jinja2
       - cloud-image-utils
+    python-packages:
+      - jinja2
   wrappers:
     plugin: dump
     source: snap/
