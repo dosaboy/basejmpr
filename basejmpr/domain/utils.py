@@ -141,7 +141,7 @@ def create_domains(root, base_root, revision, series, num_domains,
             ctxt['disks'] = disks
 
         local_templates = ['snap_install.sh']
-        dom_templates = ['create-new.sh']
+        dom_templates = ['create-domain.sh', 'create-storage.sh']
         if not skip_seed:
             if not domain_user_data:
                 dom_templates += ['user-data']
@@ -194,11 +194,14 @@ def create_domains(root, base_root, revision, series, num_domains,
 
             raise
 
-        os.chmod(os.path.join(dom_path, 'create-new.sh'), 0o0755)
+        os.chmod(os.path.join(dom_path, 'create-domain.sh'), 0o0755)
+        os.chmod(os.path.join(dom_path, 'create-storage.sh'), 0o0755)
         try:
             os.chdir(dom_path)
             with open('/dev/null') as fd:
-                subprocess.check_call(['./create-new.sh'], stdout=fd,
+                subprocess.check_call(['./create-storage.sh'], stdout=fd,
+                                      stderr=fd)
+                subprocess.check_call(['./create-domain.sh'], stdout=fd,
                                       stderr=fd)
         except Exception:
             print("\nERROR: domain '{}' create unsuccessful: deleting "
