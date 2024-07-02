@@ -1,5 +1,5 @@
-network-interfaces: |
 {%- if nic_prefix %}
+network-interfaces: |
 {%- for netid in networks %}
   auto {{nic_prefix}}{{loop.index - 1}}
   iface {{nic_prefix}}{{loop.index - 1}} inet dhcp

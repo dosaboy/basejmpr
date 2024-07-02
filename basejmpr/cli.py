@@ -195,8 +195,8 @@ def display_info(root_path, backers_path, revisions, required_rev,
     if show_detached:
         print("\nDetached:")
         empty = True
-        for img in consumers:
-            if not consumers[img].get('version'):
+        for img, consumer in consumers.items():
+            if not consumer.get('version'):
                 empty = False
                 print("{}".format(img))
 
@@ -228,14 +228,14 @@ def main():
     parser.add_argument('--num-domains', type=int, default=None,
                         required=False, help="Number of domains to "
                         "create. (requires --create-new-domains)")
-    parser.add_argument('--name', type=str, default=None,
+    parser.add_argument('--name', '-n', type=str, default=None,
                         required=False, help="Name to be used for new "
                         "domains created. If multiple domains are created "
                         "they will be suffixed with an integer counter.")
     parser.add_argument('--revision', '-r', type=str, default=None,
                         required=False, help="Backing file revision to "
                         "use.")
-    parser.add_argument('--nic-prefix', type=str, default='ens3',
+    parser.add_argument('--nic-prefix', type=str, default=None,
                         required=False, help="Network interface name prefix.")
     parser.add_argument('--force', action='store_true', default=False,
                         required=False, help="Force actions such as "
@@ -255,9 +255,9 @@ def main():
                         "domains")
     parser.add_argument('--ssh-lp-id', type=str, default=None,
                         required=False, help="LP user to import ssh key.")
-    parser.add_argument('--memory', type=int, default=1024,
+    parser.add_argument('--memory', '-m', type=int, default=1024,
                         required=False, help="Domain mem size in MB.")
-    parser.add_argument('--vcpus', type=int, default=1,
+    parser.add_argument('--vcpus', '-c', type=int, default=1,
                         required=False, help="vCPU count.")
     parser.add_argument('--boot-order', type=str, default='network,hd',
                         help="Domain boot order list (comma-seperated list of "
@@ -298,7 +298,7 @@ def main():
         if not revisions:
             rev = '1'
         elif not rev:
-            rev = str(max([int(k) for k in revisions]) + 1)
+            rev = str(max((int(k) for k in revisions)) + 1)
 
         create_revision(backers_path, series, rev)
 

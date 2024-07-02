@@ -22,8 +22,8 @@ import os
 import re
 import shutil
 import subprocess
-import uuid
 import tempfile
+import uuid
 
 
 from jinja2 import Environment, PackageLoader
@@ -160,9 +160,9 @@ def create_domains(root, base_root, revision, series, num_domains,
                              local_templates)
 
             if not skip_seed:
-                for input, tgt in {domain_user_data: 'user-data',
-                                   domain_meta_data: 'meta-data'}.items():
-                    if input:
+                for _input, tgt in {domain_user_data: 'user-data',
+                                    domain_meta_data: 'meta-data'}.items():
+                    if _input:
                         tgt = os.path.join(dom_path, tgt)
                         shutil.copy(input, tgt)
 

@@ -1,2 +1,4 @@
-flake8
-pylint==2.8.3
+flake8==6.0.0
+flake8-import-order==0.18.2
+pylint==3.1.0
+
