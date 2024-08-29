@@ -1,4 +1,5 @@
 #cloud-config
+fqdn: {{name}}.basejmpr 
 user: ubuntu
 password: ubuntu
 hostname: {{name}}

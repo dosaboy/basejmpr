@@ -290,9 +290,6 @@ def main():
     revisions = get_revisions(backers_path)
 
     rev = args.revision
-    if rev and not revisions.get(rev) and not args.create_revision:
-        raise Exception("Revision '{}' does not exist".format(rev))
-
     if (not revisions or (rev and not revisions.get(rev)) or
             (args.create_revision)):
         if not revisions:
