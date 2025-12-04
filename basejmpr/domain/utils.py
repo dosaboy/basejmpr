@@ -164,7 +164,7 @@ def create_domains(root, base_root, revision, series, num_domains,
                                     domain_meta_data: 'meta-data'}.items():
                     if _input:
                         tgt = os.path.join(dom_path, tgt)
-                        shutil.copy(input, tgt)
+                        shutil.copy(_input, tgt)
 
                 write_multipart = False
                 cmd = ['write-mime-multipart',
@@ -198,14 +198,11 @@ def create_domains(root, base_root, revision, series, num_domains,
         os.chmod(os.path.join(dom_path, 'create-storage.sh'), 0o0755)
         try:
             os.chdir(dom_path)
-            with open('/dev/null') as fd:
-                subprocess.check_call(['./create-storage.sh'], stdout=fd,
-                                      stderr=fd)
-                subprocess.check_call(['./create-domain.sh'], stdout=fd,
-                                      stderr=fd)
-        except Exception:
+            subprocess.check_call(['./create-storage.sh'])
+            subprocess.check_call(['./create-domain.sh'])
+        except Exception as exc:
             print("\nERROR: domain '{}' create unsuccessful: deleting "
-                  "{}".format(dom_name, dom_path))
+                  "{} - {}".format(dom_name, dom_path, exc))
             if not skip_cleanup:
                 shutil.rmtree(dom_path)
 
